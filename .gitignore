@@ -1,0 +1,22 @@
+*~
+.coverage
+coverage.xml
+examples/*.json
+examples/*.lock
+html/
+result
+tags
+tests/test.nixops*
+.mypy_cache
+
+syntax: glob
+.idea
+*egg-info
+*.log
+*.txt
+*.pyc
+*.swp
+*.csv
+*.out
+*.tar
+*.bkp
