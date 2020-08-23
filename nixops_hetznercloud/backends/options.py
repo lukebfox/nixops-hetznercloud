@@ -5,15 +5,40 @@ from typing import Optional
 from typing import Sequence
 
 
+class NetworkOptions(ResourceOptions):
+    networkId: str
+    privateIp: str
+    aliasIps: Optional[Sequence[str]]
+
+
+# class DiskOptions(ResourceOptions):
+#    volume: str
+#    size: int
+#    format: str
+#    automount: str
+#    deleteOnTermination: bool
+
+
+# class FilesystemsOptions(DiskOptions):
+#    pass
+
+
+# class BlockdevicemappingOptions(DiskOptions):
+#    pass
+
+
 class HetznerCloudOptions(ResourceOptions):
-    serverName: str
+    apiToken: str
+    location: str
     serverType: str
-    volumes: Optional[Sequence[str]]
-    networks: Optional[Sequence[str]]
-    user_data: str
-    labels: Optional[Mapping[str, str]]
-    location: Optional[str]
-    datacenter: str
+    #    blockDeviceMapping: Mapping[str, DiskOptions]
+    serverNetworks: Sequence[NetworkOptions]
+    ipAddress: Optional[str]
+    sshKeys: Sequence[str]
+    labels: Mapping[str, str]
+
+
+#    fileSystemOptions: Optional[Mapping[str, DiskOptions]]
 
 
 class HetznerCloudMachineOptions(MachineOptions):

@@ -1,12 +1,11 @@
-let
-  apiToken = "qFYCZtzCGcWVdIaje8fQWSOg4RmTICCwcomcOJJtUJcFm3DjDJ9Nl0kkX2ZyrFnx";
-in
+{ apiToken ? "qFYCZtzCGcWVdIaje8fQWSOg4RmTICCwcomcOJJtUJcFm3DjDJ9Nl0kkX2ZyrFnx"
+}:
 {
   network.description = "POC deployment";
   
-  resources.hetznerCloudCertificates.my-example-certificate = {
+  resources.hetznerCloudCertificates.my-ssl-cert = {
     inherit apiToken;
-    name = "my-example-certificate";
+#    name = "hi";
     certificate = ''
 -----BEGIN CERTIFICATE-----
 MIIC1TCCAb2gAwIBAgIJAJ2MDJy9Bw+tMA0GCSqGSIb3DQEBBQUAMBoxGDAWBgNV

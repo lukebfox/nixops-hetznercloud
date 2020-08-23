@@ -1,5 +1,5 @@
 # Configuration specific to Hetzner Cloud Floating IP Resource.
-{ config, lib, name, uuid ... }:
+{ config, lib, name, uuid, ... }:
 
 with import ./lib.nix lib;
 with lib;
@@ -10,10 +10,10 @@ with lib;
 
   options = {
 
-    name = mkOption {
-      default = "nixops-${uuid}-${name}";
+    description = mkOption {
+      default = "";
       type = types.str;
-      description = "Hetzner Cloud Floating IP <literal>Name</literal>.";
+      description = "Hetzner Cloud Floating IP <literal>Description</literal>.";
     };
 
     type = mkOption {
@@ -25,17 +25,27 @@ with lib;
     location = mkOption {
       default = null;
       example = "nbg1";
-      type = with types; nullOr (enum ["nbg1", "fsn1", "hel1" ]);
+      type = with types; nullOr (enum ["nbg1" "fsn1" "hel1"]);
       description = ''
         The ID of the home location (routing is optimized for that location).
         Choices are 'nbg1', 'fsn1' or 'hel1'.
       '';
     };
 
-    labels = (import ./common-hetznercloud-options.nix { inherit lib; }).labels;
+    floatingIpId = mkOption {
+      default = "";
+      type = types.str;
+      description = "The Floating IP ID generated from Hetzner Cloud. This is set by NixOps";
+    };
     
-  };
-    
-  config._type = "hetzner-cloud-floating-ip";
-  
+    address = mkOption {
+      default = "";
+      type = types.str;
+      description = "The Floating IP address generated from Hetzner Cloud. This is set by NixOps";      
+    };
+
+  } // import ./common-hetznercloud-options.nix { inherit lib; };
+
+  config._type = "hetznercloud-floating-ip";
+
 }

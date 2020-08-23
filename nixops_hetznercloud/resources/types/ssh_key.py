@@ -2,10 +2,8 @@ from nixops.resources import ResourceOptions
 from typing import Mapping
 
 
-class HetznerCloudVolumeOptions(ResourceOptions):
+class HetznerCloudSSHKeyOptions(ResourceOptions):
     apiToken: str
-    size: int
-    format: str
+    publicKey: str
     labels: Mapping[str, str]
-    location: str
-    volumeId: str
+    sshKeyId: str

@@ -1,19 +1,21 @@
 lib:
 
+with lib;
+
 {
 
   machine = mkOptionType {
     name = "Hetzner Cloud machine";
     check = x: x ? hetznerCloud;
-    merge = lib.mergeOneOption;
+    merge = mergeOneOption;
   };
 
-  resource = type: lib.mkOptionType {
+  resource = type: mkOptionType {
     name = "resource of type ‘${type}’";
     check = x: x._type or "" == type;
-    merge = lib.mergeOneOption;
+    merge = mergeOneOption;
   };
 
-  shorten_uuid = uuid: lib.replaceChars ["-"] [""] uuid;
+  shorten_uuid = uuid: replaceChars ["-"] [""] uuid;
 
 }

@@ -10,7 +10,10 @@ class NixopsHetznerCloudPlugin(Plugin):
 
     @staticmethod
     def load():
-        return ["nixops_hetznercloud.resources"]
+        return [
+            "nixops_hetznercloud.resources",
+            "nixops_hetznercloud.backends.hetznercloud",
+        ]
 
 
 @nixops.plugins.hookimpl

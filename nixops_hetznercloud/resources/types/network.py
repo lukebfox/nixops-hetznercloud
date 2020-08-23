@@ -1,10 +1,17 @@
 from nixops.resources import ResourceOptions
 from typing import Mapping
-from typing import Union
-from typing import Optional
-from typing_extensions import Literal
+from typing import Sequence
 
 
-class NetworkOptions(ResourceOptions):
-    labels: Optional[Mapping[str, str]]
-    location: Union[Literal["nbg1"], Literal["fsn1"], Literal["hel1"]]
+class HetznerCloudRouteOptions(ResourceOptions):
+    destination: str
+    gateway: str
+
+
+class HetznerCloudNetworkOptions(ResourceOptions):
+    apiToken: str
+    ipRange: str
+    subnets: Sequence[str]
+    routes: Sequence[HetznerCloudRouteOptions]
+    labels: Mapping[str, str]
+    networkId: str

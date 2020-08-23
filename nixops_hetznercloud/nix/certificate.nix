@@ -10,12 +10,6 @@ with lib;
 
   options = {
     
-    name = mkOption {
-      default = "nixops-${uuid}-${name}";
-      type = types.str;
-      description = "Hetzner Cloud Certificate <literal>Name</literal>.";
-    };
-    
     certificate = mkOption {
       example = ''
         -----BEGIN CERTIFICATE-----
@@ -43,15 +37,15 @@ with lib;
       description = "Certificate key in PEM format";
     };
     
-    labels = (import ./common-hetznercloud-options.nix { inherit lib; }).labels;
-
     certificateId = mkOption {
       default = "";
       type = types.str;
-      description = "The Certificate id generated from Hetzner Cloud. This is set by NixOps";
+      description = ''
+        The Certificate id generated from Hetzner Cloud. This is set by NixOps
+      '';
     };
     
-  };
+  } // import ./common-hetznercloud-options.nix { inherit lib; };
   
   config._type = "hetznercloud-certificate";
   
