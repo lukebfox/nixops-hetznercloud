@@ -3,22 +3,20 @@
 # Automatic provisioning of Hetzner Cloud Load Balancers.
 
 # import hcloud
-# import time
 
 # from nixops.diff import Handler
-from nixops.util import attr_property
-from nixops.resources import ResourceDefinition, ResourceState, DiffEngineResourceState
-from nixops_hetznercloud.resources.hetznercloud_common import HetznerCloudCommonState
+from nixops.resources import ResourceDefinition
+from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
 
-from .types.load_balancer import HetznerCloudLoadBalancerOptions
+from .types.load_balancer import LoadBalancerOptions
 
 
-class HetznerCloudLoadBalancerDefinition(ResourceDefinition):
+class LoadBalancerDefinition(ResourceDefinition):
     """
     Definition of a Hetzner Cloud load balancer.
     """
 
-    config: HetznerCloudLoadBalancerOptions
+    config: LoadBalancerOptions
 
     @classmethod
     def get_type(cls):
@@ -32,11 +30,11 @@ class HetznerCloudLoadBalancerDefinition(ResourceDefinition):
         return "{0}".format(self.get_type())
 
 
-class HetznerCloudLoadBalancerState(DiffEngineResourceState, HetznerCloudCommonState):
+class LoadBalancerState(HetznerCloudResourceState):
     """
-    State of a Hetzner Cloud Network.
+    State of a Hetzner Cloud Load Balancer.
     """
 
-    state = attr_property("state", ResourceState.MISSING, int)
-    api_token = attr_property("apiToken", None)
-    _reserved_keys = HetznerCloudCommonState.COMMON_HCLOUD_RESERVED + ["loadBalancerId"]
+    _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + [
+        "loadBalancerId"
+    ]

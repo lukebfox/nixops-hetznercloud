@@ -3,6 +3,16 @@
 with lib;
 
 {
+
+  apiToken = mkOption {
+    default = "";
+    type = types.str;
+    description = ''
+      The Hetzner Cloud API Token which specifies the project to create this
+      instance in. If left empty, it defaults to the contents of the
+      environment variable <envar>HCLOUD_API_TOKEN</envar>.
+    '';
+  };
     
   labels = mkOption {
     default = {};

@@ -3,22 +3,20 @@
 # Automatic provisioning of Hetzner Cloud Volumes.
 
 import hcloud
-import time
 
 from nixops.diff import Handler
-from nixops.util import attr_property
-from nixops.resources import ResourceDefinition, ResourceState, DiffEngineResourceState
-from nixops_hetznercloud.resources.hetznercloud_common import HetznerCloudCommonState
+from nixops.resources import ResourceDefinition
+from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
 
-from .types.volume import HetznerCloudVolumeOptions
+from .types.volume import VolumeOptions
 
 
-class HetznerCloudVolumeDefinition(ResourceDefinition):
+class VolumeDefinition(ResourceDefinition):
     """
     Definition of a Hetzner Cloud volume.
     """
 
-    config: HetznerCloudVolumeOptions
+    config: VolumeOptions
 
     @classmethod
     def get_type(cls):
@@ -32,21 +30,19 @@ class HetznerCloudVolumeDefinition(ResourceDefinition):
         return "{0}".format(self.get_type())
 
 
-class HetznerCloudVolumeState(DiffEngineResourceState, HetznerCloudCommonState):
+class VolumeState(HetznerCloudResourceState):
     """
     State of a Hetzner Cloud Volume.
     """
 
-    state = attr_property("state", ResourceState.MISSING, int)
-    api_token = attr_property("apiToken", None)
-    _reserved_keys = HetznerCloudCommonState.COMMON_HCLOUD_RESERVED + ["volumeId"]
+    _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + ["volumeId"]
 
     @classmethod
     def get_type(cls):
         return "hetznercloud-volume"
 
     def __init__(self, depl, name, id):
-        DiffEngineResourceState.__init__(self, depl, name, id)
+        super(HetznerCloudResourceState, self).__init__(depl, name, id)
         self.volume_id = self.resource_id
         self.handle_create_volume = Handler(
             ["location", "format"], handle=self.realise_create_volume
@@ -63,7 +59,7 @@ class HetznerCloudVolumeState(DiffEngineResourceState, HetznerCloudCommonState):
         )
 
     def show_type(self):
-        s = super(HetznerCloudVolumeState, self).show_type()
+        s = super(VolumeState, self).show_type()
         if self.state == self.UP:
             s = "{0} [{1}; {2} GiB]".format(
                 s, self._state["location"], self._state["size"]
@@ -112,7 +108,9 @@ class HetznerCloudVolumeState(DiffEngineResourceState, HetznerCloudCommonState):
                 self.cleanup_state()
                 return
         if self.state == self.STARTING:
-            self.wait_for_resource_available(self.get_client().volumes, self.resource_id)
+            self.wait_for_resource_available(
+                self.get_client().volumes, self.resource_id
+            )
 
     def _destroy(self):
         self.logger.log("destroying {0}...".format(self.full_name))
@@ -148,7 +146,7 @@ class HetznerCloudVolumeState(DiffEngineResourceState, HetznerCloudCommonState):
         name = self.get_default_name()
 
         self.logger.log(
-            "creating volume '{0}' at {1}...".format(name, location.description)
+            "creating {0}GB volume at {1}...".format(config.size, location.description)
         )
         try:
             response = self.get_client().volumes.create(

@@ -4,24 +4,21 @@
 
 import hcloud
 from hcloud.networks.domain import NetworkSubnet, NetworkRoute
-from hcloud.actions.client import BoundAction
-import time
 
 from nixops.diff import Handler
-from nixops.util import attr_property
-from nixops.resources import ResourceDefinition, ResourceState, DiffEngineResourceState
-from nixops_hetznercloud.resources.hetznercloud_common import HetznerCloudCommonState
+from nixops.resources import ResourceDefinition
+from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
 
 
-from .types.network import HetznerCloudNetworkOptions, HetznerCloudRouteOptions
+from .types.network import NetworkOptions, RouteOptions
 
 
-class HetznerCloudNetworkDefinition(ResourceDefinition):
+class NetworkDefinition(ResourceDefinition):
     """
     Definition of a Hetzner Cloud virtual network.
     """
 
-    config: HetznerCloudNetworkOptions
+    config: NetworkOptions
 
     @classmethod
     def get_type(cls):
@@ -35,21 +32,19 @@ class HetznerCloudNetworkDefinition(ResourceDefinition):
         return "{0}".format(self.get_type())
 
 
-class HetznerCloudNetworkState(DiffEngineResourceState, HetznerCloudCommonState):
+class NetworkState(HetznerCloudResourceState):
     """
     State of a Hetzner Cloud Network.
     """
 
-    state = attr_property("state", ResourceState.MISSING, int)
-    api_token = attr_property("apiToken", None)
-    _reserved_keys = HetznerCloudCommonState.COMMON_HCLOUD_RESERVED + ["networkId"]
+    _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + ["networkId"]
 
     @classmethod
     def get_type(cls):
         return "hetznercloud-network"
 
     def __init__(self, depl, name, id):
-        DiffEngineResourceState.__init__(self, depl, name, id)
+        super(HetznerCloudResourceState, self).__init__(depl, name, id)
         self.network_id = self.resource_id
         self.handle_create_network = Handler(
             ["ipRange"], handle=self.realise_create_network,
@@ -71,7 +66,7 @@ class HetznerCloudNetworkState(DiffEngineResourceState, HetznerCloudCommonState)
         )
 
     def show_type(self):
-        s = super(HetznerCloudNetworkState, self).show_type()
+        s = super(NetworkState, self).show_type()
         return "{0}".format(s)
 
     @property
@@ -122,7 +117,9 @@ class HetznerCloudNetworkState(DiffEngineResourceState, HetznerCloudCommonState)
                 self.cleanup_state()
                 return
         if self.state == self.STARTING:
-            self.wait_for_resource_available(self.get_client().networks, self.resource_id)
+            self.wait_for_resource_available(
+                self.get_client().networks, self.resource_id
+            )
 
     def _destroy(self):
         self.logger.log("destroying {0}...".format(self.full_name))
@@ -210,7 +207,7 @@ class HetznerCloudNetworkState(DiffEngineResourceState, HetznerCloudCommonState)
         prev_routes = set(self._state.get("routes", []))
         final_routes = set(config.routes)
 
-        def delete(route: HetznerCloudRouteOptions):
+        def delete(route: RouteOptions):
             r = NetworkRoute.from_dict(dict(route))
             action = self.network().delete_route(r)
             self.wait_with_progress(
@@ -223,7 +220,7 @@ class HetznerCloudNetworkState(DiffEngineResourceState, HetznerCloudCommonState)
             list(map(delete, routes_to_delete))
             self.logger.log_end("")
 
-        def add(route: HetznerCloudRouteOptions):
+        def add(route: RouteOptions):
             r = NetworkRoute.from_dict(dict(route))
             action = self.network().add_route(r)
             self.wait_with_progress(
@@ -252,9 +249,3 @@ class HetznerCloudNetworkState(DiffEngineResourceState, HetznerCloudCommonState)
     def destroy(self, wipe=False):
         self._destroy()
         return True
-
-    def wait_with_progress(self, action: BoundAction, message: str) -> None:
-        while action and action.progress < 100:
-            self.logger.log_continue("{0}: {1}%\r".format(message, action.progress))
-            time.sleep(1)
-            action = self.get_client().actions.get_by_id(action.id)

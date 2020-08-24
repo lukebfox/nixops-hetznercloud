@@ -2,7 +2,7 @@ from nixops.resources import ResourceOptions
 from typing import Mapping
 
 
-class HetznerCloudLoadBalancerOptions(ResourceOptions):
+class LoadBalancerOptions(ResourceOptions):
     apiToken: str
     labels: Mapping[str, str]
     location: str

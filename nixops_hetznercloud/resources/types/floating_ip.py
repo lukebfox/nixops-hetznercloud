@@ -2,7 +2,7 @@ from nixops.resources import ResourceOptions
 from typing import Mapping
 
 
-class HetznerCloudFloatingIPOptions(ResourceOptions):
+class FloatingIPOptions(ResourceOptions):
     apiToken: str
     description: str
     type: str

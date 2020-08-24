@@ -9,27 +9,24 @@ import time
 from hcloud import Client
 from hcloud.actions.client import BoundAction
 
-from nixops.logger import Logger
-from nixops.deployment import Deployment
-from nixops.state import StateDict
+from nixops.util import attr_property
+from nixops.resources import ResourceState, DiffEngineResourceState
 
-from typing import Optional
-from typing import Any
 from typing import Dict
 
 
-class HetznerCloudCommonState:
-    depl: Deployment
-    name: str
-    _state: StateDict
-    _client: Any
-
-    # Not always available
-    api_token: Optional[str]
+class HetznerCloudResourceState(DiffEngineResourceState):
 
     COMMON_HCLOUD_RESERVED = ["apiToken"]
 
-    def get_common_labels(self) -> Dict[str,str]:
+    state = attr_property("state", ResourceState.MISSING, int)
+    api_token = attr_property("apiToken", None)
+
+    def __init__(self, depl, name, id):
+        DiffEngineResourceState.__init__(self, depl, name, id)
+        self._client = None
+
+    def get_common_labels(self) -> Dict[str, str]:
         labels = {
             "CharonNetworkUUID": self.depl.uuid,
             "CharonInstanceName": self.name,

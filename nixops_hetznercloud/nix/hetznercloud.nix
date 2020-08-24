@@ -76,19 +76,10 @@ let
 in
 
 {
-  
-  imports = [ ./common-hetznercloud-auth-options.nix ];
 
   options = {
 
-    deployment.hetznerCloud.apiToken = mkOption {
-      default = "";
-      example = ''
-        The Hetzner Cloud API Token which specifies the project to create this
-        instance in. If left empty, it defaults to the contents of the
-        environment variable <envar>HCLOUD_API_TOKEN</envar>.
-      '';
-    };
+    deployment.hetznerCloud.apiToken = commonHetznerCloudOptions.apiToken;
 
     deployment.hetznerCloud.location = mkOption {
       default = null;
@@ -101,8 +92,8 @@ in
     };
 
 
-    deployment.hetznerCloud.serverName = mkOption {
-        default = "nixops-${shorten_uuid uuid}-${name}";
+   deployment.hetznerCloud.serverName = mkOption {
+        default = "nixops-${uuid}-${name}";
         example = "custom-server-name";
         type = types.str;
         description = ''
@@ -129,23 +120,25 @@ in
 
     deployment.hetznerCloud.sshKeys = mkOption {
       default = [];
-      example = "with resources.hetznerCloudSSHKeys; ['key1' 'key2']";
-      type = types.listOf (resource "hetznercloud-ssh-key");
+      example = "[resources.hetznerCloudSSHKeys.yubikey]";
+      type = with types; listOf (resource "hetznercloud-ssh-key");
+      apply = map (x: x._name);
+      description = "List of Hetzner Cloud SSH Key resources";
     };
 
-    deployment.hetznerCloud.serverNetworks = mkOption {
-      default = [];
-      type = types.listOf (types.submodule hetznerCloudServerNetworkOptions);
-    };
+#    deployment.hetznerCloud.serverNetworks = mkOption {
+#      default = [];
+#      type = types.listOf (types.submodule hetznerCloudServerNetworkOptions);
+#    };
 
-    deployment.hetznerCloud.ipAddress = mkOption {
-      default = null;
-      example = "resources.hetznerCloudFloatingIPs.exampleIP";
-      type = types.nullOr (resource "hetznercloud-floating-ip");
-      description = ''
-        Hetzner Cloud Floating IP address resource to bind to.
-      '';
-    };
+#    deployment.hetznerCloud.ipAddress = mkOption {
+#      default = null;
+#      example = "resources.hetznerCloudFloatingIPs.exampleIP";
+#      type = types.nullOr (resource "hetznercloud-floating-ip");
+#      description = ''
+#        Hetzner Cloud Floating IP address resource to bind to.
+#      '';
+#    };
     
     deployment.hetznerCloud.labels = commonHetznerCloudOptions.labels;
 

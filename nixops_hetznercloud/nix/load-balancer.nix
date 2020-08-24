@@ -178,8 +178,6 @@ in
 
 {
 
-  imports = [ ./common-hetznercloud-auth-options.nix ];
-
   options = {
 
     location = mkOption {

@@ -2,7 +2,7 @@ from nixops.resources import ResourceOptions
 from typing import Mapping
 
 
-class HetznerCloudVolumeOptions(ResourceOptions):
+class VolumeOptions(ResourceOptions):
     apiToken: str
     size: int
     format: str

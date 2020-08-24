@@ -6,8 +6,6 @@ with lib;
 
 {
 
-  imports = [ ./common-hetznercloud-auth-options.nix ];
-
   options = {
 
     description = mkOption {

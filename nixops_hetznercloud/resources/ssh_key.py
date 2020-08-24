@@ -3,22 +3,20 @@
 # Automatic provisioning of Hetzner Cloud SSH Keys.
 
 import hcloud
-import time
 
 from nixops.diff import Handler
-from nixops.util import attr_property
-from nixops.resources import ResourceDefinition, ResourceState, DiffEngineResourceState
-from nixops_hetznercloud.resources.hetznercloud_common import HetznerCloudCommonState
+from nixops.resources import ResourceDefinition
+from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
 
-from .types.ssh_key import HetznerCloudSSHKeyOptions
+from .types.ssh_key import SSHKeyOptions
 
 
-class HetznerCloudSSHKeyDefinition(ResourceDefinition):
+class SSHKeyDefinition(ResourceDefinition):
     """
     Definition of an SSH Key.
     """
 
-    config: HetznerCloudSSHKeyOptions
+    config: SSHKeyOptions
 
     @classmethod
     def get_type(cls):
@@ -32,28 +30,26 @@ class HetznerCloudSSHKeyDefinition(ResourceDefinition):
         return "{0}".format(self.get_type())
 
 
-class HetznerCloudSSHKeyState(DiffEngineResourceState, HetznerCloudCommonState):
+class SSHKeyState(HetznerCloudResourceState):
     """
     State of an SSH Key.
     """
 
-    state = attr_property("state", ResourceState.MISSING, int)
-    api_token = attr_property("apiToken", None)
-    _reserved_keys = HetznerCloudCommonState.COMMON_HCLOUD_RESERVED + ["sshKeyId"]
+    _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + ["sshKeyId"]
 
     @classmethod
     def get_type(cls):
         return "hetznercloud-ssh-key"
 
     def __init__(self, depl, name, id):
-        DiffEngineResourceState.__init__(self, depl, name, id)
+        super(HetznerCloudResourceState, self).__init__(depl, name, id)
         self.ssh_key_id = self.resource_id
         self.handle_create_ssh_key = Handler(
             ["publicKey", "labels"], handle=self.realise_create_ssh_key,
         )
 
     def show_type(self):
-        s = super(HetznerCloudSSHKeyState, self).show_type()
+        s = super(SSHKeyState, self).show_type()
         return "{0}".format(s)
 
     @property
@@ -94,7 +90,9 @@ class HetznerCloudSSHKeyState(DiffEngineResourceState, HetznerCloudCommonState):
                 self.cleanup_state()
                 return
         if self.state == self.STARTING:
-            self.wait_for_resource_available(self.get_client().ssh_keys, self.resource_id)
+            self.wait_for_resource_available(
+                self.get_client().ssh_keys, self.resource_id
+            )
 
     def _destroy(self):
         if self.state != self.UP:

@@ -3,22 +3,20 @@
 # Automatic provisioning of Hetzner Cloud Certificates.
 
 import hcloud
-import time
 
 from nixops.diff import Handler
-from nixops.util import attr_property
-from nixops.resources import ResourceDefinition, ResourceState, DiffEngineResourceState
-from nixops_hetznercloud.resources.hetznercloud_common import HetznerCloudCommonState
+from nixops.resources import ResourceDefinition
+from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
 
-from .types.certificate import HetznerCloudCertificateOptions
+from .types.certificate import CertificateOptions
 
 
-class HetznerCloudCertificateDefinition(ResourceDefinition):
+class CertificateDefinition(ResourceDefinition):
     """
     Definition of a Certificate.
     """
 
-    config: HetznerCloudCertificateOptions
+    config: CertificateOptions
 
     @classmethod
     def get_type(cls):
@@ -32,21 +30,21 @@ class HetznerCloudCertificateDefinition(ResourceDefinition):
         return "{0}".format(self.get_type())
 
 
-class HetznerCloudCertificateState(DiffEngineResourceState, HetznerCloudCommonState):
+class CertificateState(HetznerCloudResourceState):
     """
     State of a Certificate.
     """
 
-    state = attr_property("state", ResourceState.MISSING, int)
-    api_token = attr_property("apiToken", None)
-    _reserved_keys = HetznerCloudCommonState.COMMON_HCLOUD_RESERVED + ["certificateId"]
+    _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + [
+        "certificateId"
+    ]
 
     @classmethod
     def get_type(cls):
         return "hetznercloud-certificate"
 
     def __init__(self, depl, name, id):
-        DiffEngineResourceState.__init__(self, depl, name, id)
+        HetznerCloudResourceState.__init__(self, depl, name, id)
         self.certificate_id = self.resource_id
         self.handle_create_certificate = Handler(
             ["certificate", "privateKey", "labels"],
@@ -54,7 +52,7 @@ class HetznerCloudCertificateState(DiffEngineResourceState, HetznerCloudCommonSt
         )
 
     def show_type(self):
-        s = super(HetznerCloudCertificateState, self).show_type()
+        s = super(CertificateState, self).show_type()
         return "{0}".format(s)
 
     @property
@@ -63,9 +61,7 @@ class HetznerCloudCertificateState(DiffEngineResourceState, HetznerCloudCommonSt
 
     @property
     def full_name(self):
-        return "Hetzner Cloud Certificate {0} [{1}]".format(
-            self.resource_id, self.name
-        )
+        return "Hetzner Cloud Certificate {0} [{1}]".format(self.resource_id, self.name)
 
     def prefix_definition(self, attr):
         return {("resources", "hetznerCloudCertificates"): attr}
@@ -98,7 +94,9 @@ class HetznerCloudCertificateState(DiffEngineResourceState, HetznerCloudCommonSt
                 self.cleanup_state()
                 return
         if self.state == self.STARTING:
-            self.wait_for_resource_available(self.get_client().certificates, self.resource_id)
+            self.wait_for_resource_available(
+                self.get_client().certificates, self.resource_id
+            )
 
     def _destroy(self):
         if self.state != self.UP:
@@ -156,7 +154,9 @@ class HetznerCloudCertificateState(DiffEngineResourceState, HetznerCloudCommonSt
             self._state["privateKey"] = config.privateKey
             self._state["labels"] = dict(config.labels)
 
-        self.wait_for_resource_available(self.get_client().certificates, self.certificate_id)
+        self.wait_for_resource_available(
+            self.get_client().certificates, self.certificate_id
+        )
 
     def destroy(self, wipe=False):
         self._destroy()

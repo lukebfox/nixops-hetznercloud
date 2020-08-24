@@ -1,14 +1,13 @@
 from nixops.backends import MachineOptions
 from nixops.resources import ResourceOptions
 from typing import Mapping
-from typing import Optional
 from typing import Sequence
 
 
-class NetworkOptions(ResourceOptions):
-    networkId: str
-    privateIp: str
-    aliasIps: Optional[Sequence[str]]
+# class NetworkOptions(ResourceOptions):
+#    networkId: str
+#    privateIp: str
+#    aliasIps: Optional[Sequence[str]]
 
 
 # class DiskOptions(ResourceOptions):
@@ -30,10 +29,11 @@ class NetworkOptions(ResourceOptions):
 class HetznerCloudOptions(ResourceOptions):
     apiToken: str
     location: str
+    serverName: str
     serverType: str
-    #    blockDeviceMapping: Mapping[str, DiskOptions]
-    serverNetworks: Sequence[NetworkOptions]
-    ipAddress: Optional[str]
+    # blockDeviceMapping: Mapping[str, DiskOptions]
+    # serverNetworks: Sequence[NetworkOptions]
+    # ipAddress: Optional[str]
     sshKeys: Sequence[str]
     labels: Mapping[str, str]
 

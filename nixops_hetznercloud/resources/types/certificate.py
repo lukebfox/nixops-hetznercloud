@@ -1,9 +1,8 @@
 from nixops.resources import ResourceOptions
 from typing import Mapping
-from typing import Optional
 
 
-class HetznerCloudCertificateOptions(ResourceOptions):
+class CertificateOptions(ResourceOptions):
     apiToken: str
     certificate: str
     privateKey: str

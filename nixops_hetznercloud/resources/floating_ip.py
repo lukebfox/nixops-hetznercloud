@@ -3,22 +3,20 @@
 # Automatic provisioning of Hetzner Cloud Floating IPs.
 
 import hcloud
-import time
 
 from nixops.diff import Handler
-from nixops.util import attr_property
-from nixops.resources import ResourceDefinition, ResourceState, DiffEngineResourceState
-from nixops_hetznercloud.resources.hetznercloud_common import HetznerCloudCommonState
+from nixops.resources import ResourceDefinition
+from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
 
-from .types.floating_ip import HetznerCloudFloatingIPOptions
+from .types.floating_ip import FloatingIPOptions
 
 
-class HetznerCloudFloatingIPDefinition(ResourceDefinition):
+class FloatingIPDefinition(ResourceDefinition):
     """
     Definition of a Hetzner Cloud floating IP address.
     """
 
-    config: HetznerCloudFloatingIPOptions
+    config: FloatingIPOptions
 
     @classmethod
     def get_type(cls):
@@ -32,14 +30,12 @@ class HetznerCloudFloatingIPDefinition(ResourceDefinition):
         return "{0}".format(self.get_type())
 
 
-class HetznerCloudFloatingIPState(DiffEngineResourceState, HetznerCloudCommonState):
+class FloatingIPState(HetznerCloudResourceState):
     """
     State of a Hetzner Cloud Floating IP.
     """
 
-    state = attr_property("state", ResourceState.MISSING, int)
-    api_token = attr_property("apiToken", None)
-    _reserved_keys = HetznerCloudCommonState.COMMON_HCLOUD_RESERVED + [
+    _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + [
         "floatingIpId",
         "address",
     ]
@@ -49,7 +45,7 @@ class HetznerCloudFloatingIPState(DiffEngineResourceState, HetznerCloudCommonSta
         return "hetznercloud-floating-ip"
 
     def __init__(self, depl, name, id):
-        DiffEngineResourceState.__init__(self, depl, name, id)
+        super(HetznerCloudResourceState, self).__init__(depl, name, id)
         self.floating_ip_id = self.resource_id
         self.handle_create_floating_ip = Handler(
             ["location", "type"], handle=self.realise_create_floating_ip,
@@ -61,7 +57,7 @@ class HetznerCloudFloatingIPState(DiffEngineResourceState, HetznerCloudCommonSta
         )
 
     def show_type(self):
-        s = super(HetznerCloudFloatingIPState, self).show_type()
+        s = super(FloatingIPState, self).show_type()
         location = self._state.get("location", None)
         if self.state == self.UP:
             s = "{0} [{1}]".format(s, location)
@@ -113,7 +109,9 @@ class HetznerCloudFloatingIPState(DiffEngineResourceState, HetznerCloudCommonSta
                 self.cleanup_state()
                 return
         if self.state == self.STARTING:
-            self.wait_for_resource_available(self.get_client().floating_ips, self.resource_id)
+            self.wait_for_resource_available(
+                self.get_client().floating_ips, self.resource_id
+            )
 
     def _destroy(self):
         self.logger.log("destroying {0}...".format(self.full_name))
@@ -143,7 +141,6 @@ class HetznerCloudFloatingIPState(DiffEngineResourceState, HetznerCloudCommonSta
             self._destroy()
             self._client = None
 
-        name = self.get_default_name()
         location = self.get_client().locations.get_by_name(config.location)
 
         self.logger.log("creating floating IP at {0}...".format(location.description))
@@ -174,7 +171,9 @@ class HetznerCloudFloatingIPState(DiffEngineResourceState, HetznerCloudCommonSta
             self._state["type"] = config.type
             self._state["address"] = self.address
 
-        self.wait_for_resource_available(self.get_client().floating_ips, self.floating_ip_id)
+        self.wait_for_resource_available(
+            self.get_client().floating_ips, self.floating_ip_id
+        )
 
     def realise_modify_floating_ip_attrs(self, allow_recreate):
         config = self.get_defn()

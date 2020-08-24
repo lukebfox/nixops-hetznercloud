@@ -3,15 +3,15 @@ from typing import Mapping
 from typing import Sequence
 
 
-class HetznerCloudRouteOptions(ResourceOptions):
+class RouteOptions(ResourceOptions):
     destination: str
     gateway: str
 
 
-class HetznerCloudNetworkOptions(ResourceOptions):
+class NetworkOptions(ResourceOptions):
     apiToken: str
     ipRange: str
     subnets: Sequence[str]
-    routes: Sequence[HetznerCloudRouteOptions]
+    routes: Sequence[RouteOptions]
     labels: Mapping[str, str]
     networkId: str
