@@ -1,7 +1,8 @@
 from nixops.backends import MachineOptions
 from nixops.resources import ResourceOptions
 from typing import Mapping
-from typing import Sequence
+
+# from typing import Sequence
 
 
 # class NetworkOptions(ResourceOptions):
@@ -34,11 +35,8 @@ class HetznerCloudOptions(ResourceOptions):
     # blockDeviceMapping: Mapping[str, DiskOptions]
     # serverNetworks: Sequence[NetworkOptions]
     # ipAddress: Optional[str]
-    sshKeys: Sequence[str]
     labels: Mapping[str, str]
-
-
-#    fileSystemOptions: Optional[Mapping[str, DiskOptions]]
+    # fileSystemOptions: Optional[Mapping[str, DiskOptions]]
 
 
 class HetznerCloudMachineOptions(MachineOptions):

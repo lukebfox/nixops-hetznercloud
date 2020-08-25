@@ -17,7 +17,7 @@ from hcloud.servers.client import BoundServer
 from hcloud.server_types.client import BoundServerType
 from hcloud.actions.client import BoundAction
 
-# from nixops import known_hosts
+from nixops import known_hosts
 from nixops.deployment import Deployment
 from nixops.util import attr_property, create_key_pair
 from nixops.nix_expr import RawValue
@@ -27,11 +27,9 @@ from nixops.resources import ResourceEval
 import nixops_hetznercloud.resources
 from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
 
-from typing import Optional
 from typing import List
 from typing import Dict
 from typing import Set
-from typing_extensions import Literal
 
 from .options import HetznerCloudMachineOptions
 
@@ -59,21 +57,20 @@ class HetznerCloudDefinition(MachineDefinition):
         self.location = self.config.hetznerCloud.location
         self.server_name = self.config.hetznerCloud.serverName
         self.server_type = self.config.hetznerCloud.serverType
-        #        self.networks = self.config.hetznerCloud.networks
-        #        self.ip_address = self.config.hetznerCloud.ipAddress
-        self.ssh_keys = config.hetznerCloud.sshKeys
-        #        self.block_device_mapping = {
-        #            k: dict(v) for k, v in self.config.hetznerCloud.blockDeviceMapping.items()
-        #        }
-        #        boot_devices: List[str] = [
-        #            k for k, v in self.block_device_mapping.items() if v["bootDisk"]
-        #        ]
-        #        if len(boot_devices) == 0:
-        #            raise Exception("machine {0} must have a boot device.".format(self.name))
-        #        if len(boot_devices) > 1:
-        #            raise Exception(
-        #                "machine {0} must have exactly one boot device.".format(self.name)
-        #            )
+        # self.networks = self.config.hetznerCloud.networks
+        # self.ip_address = self.config.hetznerCloud.ipAddress
+        # self.block_device_mapping = {
+        #     k: dict(v) for k, v in self.config.hetznerCloud.blockDeviceMapping.items()
+        # }
+        # boot_devices: List[str] = [
+        #     k for k, v in self.block_device_mapping.items() if v["bootDisk"]
+        # ]
+        # if len(boot_devices) == 0:
+        #     raise Exception("machine {0} must have a boot device.".format(self.name))
+        # if len(boot_devices) > 1:
+        #     raise Exception(
+        #         "machine {0} must have exactly one boot device.".format(self.name)
+        #     )
         self.labels = dict(self.config.hetznerCloud.labels)
 
     def show_type(self):
@@ -91,26 +88,21 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
 
     state = attr_property("state", MachineState.MISSING, int)  # override
     api_token = attr_property("hetznerCloud.apiToken", None)
-
     server_id = attr_property("serverId", None, int)
     public_ipv4 = attr_property("publicIpv4", None)
     public_ipv6 = attr_property("publicIpv6", None)
     private_ipv4 = attr_property("privateIpv4", None)
-
     public_client_key = attr_property("hetznerCloud.publicClientKey", None)
     private_client_key = attr_property("hetznerCloud.privateClientKey", None)
-
     public_host_key = attr_property("hetznerCloud.publicHostKey", None)
     private_host_key = attr_property("hetznerCloud.privateHostKey", None)
-
     location = attr_property("hetznerCloud.location", None)
     server_name = attr_property("hetznerCloud.serverName", None)
     server_type = attr_property("hetznerCloud.serverType", None)
-
-    #    block_device_mapping = attr_property("hetznerCloud.blockDeviceMapping", {}, "json")
-    #    networks = attr_property("hetznerCloud.networks", None)
-    #    ip_address = attr_property("hetznerCloud.ipAddress", None)
-    ssh_keys = attr_property("hetznerCloud.sshKeys", [], "json")
+    # block_device_mapping = attr_property("hetznerCloud.blockDeviceMapping", {}, "json")
+    # networks = attr_property("hetznerCloud.networks", None)
+    # ip_address = attr_property("hetznerCloud.ipAddress", None)
+    labels = attr_property("hetznerCloud.labels", {}, "json")
 
     def __init__(self, depl: Deployment, name: str, id):
         MachineState.__init__(self, depl, name, id)
@@ -122,20 +114,16 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             self.server_id = None
             self.public_ipv4 = None
             self.public_ipv6 = None
-
             self.private_client_key = None
             self.public_client_key = None
             self.private_host_key = None
             self.public_host_key = None
-
             self.location = None
             self.server_name = None
             self.server_type = None
-
-            #            self.blockDeviceMapping = None
-            #            self.ip_address = None
-            #            self.networks = None
-            self.ssh_keys = None
+            # self.blockDeviceMapping = None
+            # self.ip_address = None
+            # self.networks = None
 
     def show_type(self):
         s = super(HetznerCloudState, self).show_type()
@@ -144,15 +132,11 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         return s
 
     @property
-    def resource_id(self) -> Optional[str]:
-        return self.server_id
-
-    @property
     def full_name(self) -> str:
         return "Hetzner Cloud Server '{0}'".format(self.name)
 
     def _get_instance(self) -> BoundServer:
-        return self.get_client().servers.get_by_id(self.resource_id)
+        return self.get_client().servers.get_by_id(self.server_id)
 
     def get_client(self) -> Client:
         """
@@ -199,14 +183,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
 
     def get_ssh_flags(self, *args, **kwargs) -> List[str]:
         super_flags = super(HetznerCloudState, self).get_ssh_flags(*args, **kwargs)
-        return super_flags + [
-            "-o",
-            "UserKnownHostsFile=/dev/null",
-            "-o",
-            "StrictHostKeyChecking=no",
-            "-i",
-            self.get_ssh_private_key_file(),
-        ]
+        return super_flags + ["-i", self.get_ssh_private_key_file()]
 
     def get_physical_spec(self):
         return {
@@ -215,16 +192,8 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             ("fileSystems", "/"): {"device": "/dev/sda1", "fsType": "ext4"},
             ("users", "extraUsers", "root", "openssh", "authorizedKeys", "keys"): [
                 self.public_client_key
-            ]
-            + [key.public_key for key in self.get_authorised_ssh_keys(self.ssh_keys)],
+            ],
         }
-
-    def get_authorised_ssh_keys(self, ssh_keys: str) -> List[BoundSSHKey]:
-        bound_keys = []
-        for key in ssh_keys:
-            full_key_name = "nixops-" + self.depl.uuid + "-" + key
-            bound_keys.append(self.get_client().ssh_keys.get_by_name(full_key_name))
-        return bound_keys
 
     #    def attach_volume(self):
     #        pass
@@ -239,8 +208,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         return {
             r
             for r in resources
-            if isinstance(r, nixops_hetznercloud.resources.ssh_key.SSHKeyState)
-            or isinstance(r, nixops_hetznercloud.resources.floating_ip.FloatingIPState)
+            if isinstance(r, nixops_hetznercloud.resources.floating_ip.FloatingIPState)
             or isinstance(r, nixops_hetznercloud.resources.network.NetworkState)
             or isinstance(r, nixops_hetznercloud.resources.volume.VolumeState)
         }
@@ -276,16 +244,17 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
 
         # Stop the instance (if allowed) to change instance attributes
         # such as the server type.
-        if self.vm_id and allow_reboot and (self.server_type != defn.server_type):
+        if self.server_id and allow_reboot and (self.server_type != defn.server_type):
             self.stop()
             check = True
 
         # Check whether the instance hasn't been killed behind our backs.
-        # Change server type if needed. Restart stopped instances.
-        if self.vm_id and check:
+        # Handle changed server type.
+        # Restart stopped instances.
+        if self.server_id and check:
             instance = self._get_instance()
 
-            if instance is None or instance.state in {"deleting"}:
+            if instance is None or instance.status in {"deleting"}:
                 if not allow_recreate:
                     raise Exception(
                         "{0} went away; use ‘--allow-recreate’ to create a new one".format(
@@ -294,12 +263,12 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                     )
                 self.log(
                     "{0} went away (state ‘{1}’), will recreate".format(
-                        self.full_name, instance.state if instance else "gone"
+                        self.full_name, instance.status if instance else "gone"
                     )
                 )
                 self.cleanup_state()
                 self.location = defn.location
-            elif instance.state == "off":
+            elif instance.status == "off":
                 self.log("instance was stopped, restarting...")
 
                 # Modify the server type, if desired.
@@ -310,15 +279,16 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                         )
                     )
                     self.logger.warn(
-                        "upgrading server type currently does not support rollbacks"
-                    )  # FIXME store the disk size in state to enable downsizing
+                        "nixops does not currently support server type upgrade rollbacks"
+                    )
+                    # FIXME store disk size in state to enable downsizing server type
                     instance.change_type(defn.server_type, upgrade_disk=True)
                     self.server_type = defn.server_type
 
                 self.start()
 
         # create the instance.
-        if not self.vm_id:
+        if not self.server_id:
 
             if not self.public_client_key:
                 (private, public) = create_key_pair()
@@ -338,25 +308,21 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                 defn.server_type
             )
 
-            ssh_keys: List[BoundSSHKey] = self.get_authorised_ssh_keys(defn.ssh_keys)
-            ssh_keys.append(self._create_ssh_key(self.public_client_key))
-            print(ssh_keys)
+            ssh_keys: List[BoundSSHKey] = [self._create_ssh_key(self.public_client_key)]
 
             image: BoundImage = self.get_client().images.get_by_name(
-                "ubuntu-18.04"
+                "ubuntu-20.04"
             )  # for lustration
 
-            user_data = """
-               #cloud-config
-               ssh_keys:
-                  ed25519_public: | {0}
-                  ed25519_private: | {1}
-                  ssh_authorized_keys:
-                  - {2}
-            """.format(
-                self.public_host_key,
-                self.private_host_key.replace("\n", "|"),
-                self.public_client_key,
+            # Ensure host keys get injected into the base OS
+            user_data = (
+                "#cloud-config\n"
+                "ssh_keys:\n"
+                "  ed25519_public: {0}\n"
+                "  ed25519_private: |\n"
+                "    {1}"
+            ).format(
+                self.public_host_key, self.private_host_key.replace("\n", "\n    ")
             )
 
             self.logger.log_start(
@@ -382,23 +348,24 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                 self.server_id = response.server.id
                 self.public_ipv4 = response.server.public_net.ipv4.ip
                 self.public_ipv6 = response.server.public_net.ipv6.ip
-
                 self.server_name = defn.server_name
                 self.server_type = defn.server_type
                 self.location = defn.location
-                self.labels = defn.labels
-
+                self.labels = dict(defn.labels)
                 # self.ip_address = defn.ip_address
                 # self.networks = defn.networks
-                self.ssh_keys = defn.ssh_keys
+                self.private_host_key = None
 
-                self.logger.log_end("{0}".format(self.public_ipv4))
-                self.wait_for_ssh()
-                self.logger.log_start("running nixos-infect")
-                self.state = self.RESCUE
-                self.run_command("bash </dev/stdin 2>&1", stdin=open(INFECT_PATH))
-                self.reboot_sync()
-                self.state = self.UP
+            known_hosts.add(self.public_ipv4, self.public_host_key)
+
+            self.logger.log_end("{0}".format(self.public_ipv4))
+            self.wait_for_ssh()
+            self.logger.log_start("running nixos-infect")
+            self.state = self.RESCUE
+            self.run_command("bash </dev/stdin 2>&1", stdin=open(INFECT_PATH))
+            self.logger.log("rebooting into NixOS 😎")
+            self.reboot_sync()
+            self.state = self.UP
 
         # Warn about some options that we cannot update for an existing instance
         if self.location != defn.location:
@@ -414,35 +381,27 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
 
         # Update name or labels if they have changed.
         if self.server_name != defn.server_name or self.labels != defn.labels:
+            self.logger.log("updating trivial modified attributes")
             self._get_instance().update(
-                defn.server_name, {**self.get_common_labels(), **defn.labels}
+                defn.server_name, {**self.get_common_labels(), **dict(defn.labels)}
             )
-
-        # Update authorised SSH Keys if they have changed.
-
-    def _destroy_ssh_key(self, public_key) -> None:
-        self.get_client().ssh_keys.get_by_name(
-            "nixops-{0}-{1}".format(self.depl.uuid, self.name)
-        ).delete()
 
     def _destroy(self) -> None:
         if self.state != self.UP:
             return
         self.logger.log("destroying {0}...".format(self.full_name))
         try:
-            self.get_client().servers.get_by_id(self.resource_id).delete()
+            self.get_client().servers.get_by_id(self.server_id).delete()
         except hcloud.APIException as e:
             if e.code == "not_found":
                 self.warn("{0} was already deleted".format(self.full_name))
-            else:
-                raise e
+        known_hosts.remove(self.public_ipv4, self.public_host_key)
         self.cleanup_state()
 
     def destroy(self, wipe=False) -> bool:
         question = "are you sure you want to destroy {0}?"
         if not self.depl.logger.confirm(question.format(self.full_name)):
             return False
-        self._destroy_ssh_key(self.public_host_key)
         self._destroy()
         return True
 
@@ -451,7 +410,6 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         self.logger.log("powering on {0}...".format(self.full_name))
         self.wait_on_action(self.get_client().servers.power_on(instance))
         self.wait_for_ssh()
-        self.state = self.STARTING
 
     def stop(self) -> None:
         question = "are you sure you want to stop {0}?"
@@ -475,17 +433,15 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             self.logger.log("sending hard reset to {0}...".format(self.full_name))
             self.wait_on_action(self.get_client().servers.reset(instance))
             self.wait_for_ssh()
-            self.state = self.STARTING
         else:
             self.logger.log(
                 "sending ACPI reboot request to {0}...".format(self.full_name)
             )
             self.wait_on_action(self.get_client().servers.reboot(instance))
             self.wait_for_ssh()
-            self.state = self.STARTING
 
-    #    def _check(self):
-    #        pass
+    def _check(self):
+        pass
 
     def wait_on_action(self, action: BoundAction) -> None:
         while action.status == "running":

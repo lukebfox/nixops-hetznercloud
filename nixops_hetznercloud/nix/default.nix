@@ -12,7 +12,6 @@
     hetznerCloudFloatingIPs = evalResources ./floating-ip.nix (zipAttrs resourcesByType.hetznerCloudFloatingIPs or []);
     hetznerCloudLoadBalancers = evalResources ./load-balancer.nix (zipAttrs resourcesByType.hetznerCloudLoadBalancers or []);
     hetznerCloudNetworks = evalResources ./network.nix (zipAttrs resourcesByType.hetznerCloudNetworks or []);
-    hetznerCloudSSHKeys = evalResources ./ssh-key.nix (zipAttrs resourcesByType.hetznerCloudSSHKeys or []);
     hetznerCloudVolumes = evalResources ./volume.nix (zipAttrs resourcesByType.hetznerCloudVolumes or []);
   };
 }
