@@ -8,7 +8,7 @@
     location = "nbg1";
     name = "volume-1";
     size = 10;
-    format = "ext4";
+    fsType = "ext4";
     labels = { hi = "hi"; } ;
   };
 

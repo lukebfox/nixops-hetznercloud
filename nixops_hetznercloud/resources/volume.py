@@ -45,7 +45,7 @@ class VolumeState(HetznerCloudResourceState):
         super(HetznerCloudResourceState, self).__init__(depl, name, id)
         self.volume_id = self.resource_id
         self.handle_create_volume = Handler(
-            ["location", "format"], handle=self.realise_create_volume
+            ["location", "fsType"], handle=self.realise_create_volume
         )
         self.handle_resize_volume = Handler(
             ["size"],
@@ -91,7 +91,7 @@ class VolumeState(HetznerCloudResourceState):
             self._state["volumeId"] = None
             self._state["location"] = None
             self._state["size"] = None
-            self._state["format"] = None
+            self._state["fsType"] = None
             self._state["labels"] = None
 
     def _check(self):
@@ -129,7 +129,7 @@ class VolumeState(HetznerCloudResourceState):
         if self.state == self.UP:
             if self._state["location"] != config.location:
                 raise Exception("changing a volume's location isn't supported.")
-            if self._state["format"] != config.format:
+            if self._state["fsType"] != config.fsType:
                 raise Exception("reformatting a volume isn't supported.")
             if not allow_recreate:
                 raise Exception(
@@ -150,7 +150,7 @@ class VolumeState(HetznerCloudResourceState):
         )
         try:
             response = self.get_client().volumes.create(
-                location=location, name=name, size=config.size, format=config.format,
+                location=location, name=name, size=config.size, format=config.fsType,
             )
             if response.action:
                 response.action.wait_until_finished()
@@ -171,7 +171,7 @@ class VolumeState(HetznerCloudResourceState):
             self._state["volumeId"] = self.volume_id
             self._state["location"] = config.location
             self._state["size"] = config.size
-            self._state["format"] = config.format
+            self._state["fsType"] = config.fsType
 
         self.wait_for_resource_available(self.get_client().volumes, self.volume_id)
 

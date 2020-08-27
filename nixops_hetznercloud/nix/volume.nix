@@ -19,7 +19,7 @@ with lib;
       '';
     };
    
-    format = mkOption {
+    fsType = mkOption {
       default = "ext4";
       example = "xfs";
       type = types.enum ["ext4" "xfs"];

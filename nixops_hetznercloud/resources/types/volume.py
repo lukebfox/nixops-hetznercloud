@@ -5,7 +5,7 @@ from typing import Mapping
 class VolumeOptions(ResourceOptions):
     apiToken: str
     size: int
-    format: str
+    fsType: str
     labels: Mapping[str, str]
     location: str
     volumeId: str
