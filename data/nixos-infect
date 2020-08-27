@@ -3,7 +3,7 @@
 # This is a stripped back version of the original nixos-infect, streamlined for
 # preparing Hetzner Cloud servers for NixOps deployments. It assumes that Ubuntu
 # 20.04 is the base OS for lustration as this is hardcoded in the NixOps plugin
-# which uses this script. The NixOps created ssh host keys will be persisted
+# which this script accompanies. The NixOps created ssh host keys will persist
 # through the lustration process.
 
 # More info at: https://github.com/elitak/nixos-infect
