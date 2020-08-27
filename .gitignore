@@ -20,3 +20,5 @@ syntax: glob
 *.out
 *.tar
 *.bkp
+
+.direnv/**
