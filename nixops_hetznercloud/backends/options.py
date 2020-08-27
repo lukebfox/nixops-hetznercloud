@@ -1,6 +1,7 @@
 from nixops.backends import MachineOptions
 from nixops.resources import ResourceOptions
 from typing import Mapping
+from typing import Optional
 
 # from typing import Sequence
 
@@ -11,20 +12,20 @@ from typing import Mapping
 #    aliasIps: Optional[Sequence[str]]
 
 
-# class DiskOptions(ResourceOptions):
-#    volume: str
-#    size: int
-#    format: str
-#    automount: str
-#    deleteOnTermination: bool
+class DiskOptions(ResourceOptions):
+   volume: str
+#   size: int
+#   fsType: str
+#   automount: str
+#   deleteOnTermination: bool
 
 
-# class FilesystemsOptions(DiskOptions):
-#    pass
+class FilesystemsOptions(DiskOptions):
+    pass
 
 
-# class BlockdevicemappingOptions(DiskOptions):
-#    pass
+class BlockdevicemappingOptions(DiskOptions):
+    pass
 
 
 class HetznerCloudOptions(ResourceOptions):
@@ -32,11 +33,11 @@ class HetznerCloudOptions(ResourceOptions):
     location: str
     serverName: str
     serverType: str
-    # blockDeviceMapping: Mapping[str, DiskOptions]
+    labels: Mapping[str, str]
+    # blockDeviceMapping: Mapping[str, BlockdevicemappingOptions]
     # serverNetworks: Sequence[NetworkOptions]
     # ipAddress: Optional[str]
-    labels: Mapping[str, str]
-    # fileSystemOptions: Optional[Mapping[str, DiskOptions]]
+    # fileSystemOptions: Optional[Mapping[str, FilesystemsOptions]]
 
 
 class HetznerCloudMachineOptions(MachineOptions):

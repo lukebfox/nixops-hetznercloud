@@ -12,66 +12,76 @@ let
 
   commonHetznerCloudOptions = import ./common-hetznercloud-options.nix { inherit lib; };
 
-  hetznerCloudServerNetworkOptions =
-    { config, ... }:
-    {
-      options = {
-        subnetId = mkOption {
-          example = "resources.hetznerCloudNetworkSubnets.subnet-1";
-          type = resource "hetznercloud-network-subnet";
-          description = ''
-            The ID of a Subnet which contains this Hetzner Cloud instance.
-          '';
-        };
-        privateIP = mkOption {
-          example = "10.1.0.2";
-          type = types.str;
-          description = ''
-            The Hetzner Cloud instance's private IP address on this Subnet.
-          '';
-        };
-        aliasIPs = mkOption {
-          default = [];
-          example = [ "10.1.0.3" "10.1.0.4" "10.1.0.100"];
-          type = with types; listOf str;
-          description = ''
-            The Hetzner Cloud instance's alias IP addresses on this Subnet.
-          '';
-        };
-      };
-      config = { };
-    };
+  # hetznerCloudServerNetworkOptions =
+  #   { config, ... }:
+  #   {
+  #     options = {
+  #       subnetId = mkOption {
+  #         example = "resources.hetznerCloudNetworkSubnets.subnet-1";
+  #         type = resource "hetznercloud-network-subnet";
+  #         description = ''
+  #           The ID of a Subnet which contains this Hetzner Cloud instance.
+  #         '';
+  #       };
+  #       privateIP = mkOption {
+  #         example = "10.1.0.2";
+  #         type = types.str;
+  #         description = ''
+  #           The Hetzner Cloud instance's private IP address on this Subnet.
+  #         '';
+  #       };
+  #       aliasIPs = mkOption {
+  #         default = [];
+  #         example = [ "10.1.0.3" "10.1.0.4" "10.1.0.100"];
+  #         type = with types; listOf str;
+  #         description = ''
+  #           The Hetzner Cloud instance's alias IP addresses on this Subnet.
+  #         '';
+  #       };
+  #     };
+  #     config = { };
+  #   };
 
-  hetznerCloudDiskOptions =
-    { config, ...}:
-    {
-      options = {};
-      config = {};
-    };
+  # hetznerCloudDiskOptions =
+  #   { config, ... }:
+  #   {
+  #     # imports = [ ./common-volume-options.nix ];
+  #     options = {
+  #       volume = mkOption {
+  #         example = "volume1";
+  #         type = with types; either str (resource "hetznercloud-volume");
+  #         apply = x: if builtins.isString x then x else "nixops-" + uuid + x._name;
+  #         description = ''
+  #           Hetzner Cloud identifier of the disk to be mounted. This can be a
+  #           volume name (e.g. <literal>volume1</literal>). It can also be a 
+  #           Volume resource (e.g. <literal>resources.hetznerCloudVolumes.db</literal>).
+  #           TODO Leave empty to create a HetznerCloud volume automatically. 
+  #         '';
+  #       };
+  #     };
+  #   };
 
- fileSystemsOptions =
-   { config, ... }:
-   {
-     options = {
-       hetznerCloud = mkOption {
-         default = null;
-         type = with types; (nullOr (submodule hetznerCloudDiskOptions));
-         description = ''
-           Hetzner Cloud disk to be attached to this mount point. 
-           This is shorthand for defining a separate
-           <option>deployment.hetznerCloud.blockDeviceMapping</option>
-           attribute.
-         '';
-       };
-     };
-     config = mkIf (config.hetznerCloud != null) {
-       device = mkDefault "${
-         hetznercloud_dev_prefix
-       }${
-         get_disk_name (mkDefaultDiskName config.mountPoint config.hetznercloud)
-       }";
-     };
-   };
+  # fileSystemsOptions =
+  #  { config, ... }:
+  #  {
+  #    options.hetznerCloud = mkOption {
+  #      default = null;
+  #      type = with types; (nullOr (submodule hetznerCloudDiskOptions));
+  #      description = ''
+  #        Hetzner Cloud volume to be attached to this mount point. 
+  #        This is shorthand for defining a separate
+  #        <option>deployment.hetznerCloud.blockDeviceMapping</option>
+  #        attribute.
+  #      '';
+  #    };
+  #    config = mkIf (config.hetznerCloud != null) {
+  #      device = mkDefault "${
+  #        hetznercloud_dev_prefix
+  #      }${
+  #        get_disk_name (mkDefaultDiskName config.mountPoint config.hetznercloud)
+  #      }";
+  #    };
+  #  };
 
 in
 
@@ -110,18 +120,20 @@ in
         found at <link xlink:href='https://www.hetzner.de/cloud#pricing'/>
       '';
     };
-    
+
     # deployment.hetznerCloud.blockDeviceMapping = mkOption {
-    #   default = [];
-    #   example = { my-volume = "resources.hetznerCloudVolumes.my-example-volume"; };
-    #   type = types.listOf (resource "hetznercloud-volume");
+    #   default = { };
+    #   example = { "/dev/sdb".volume = "volume1"; };
+    #   type = with types; attrsOf (submodule hetznerCloudDiskOptions);
+    #   description = ''
+    #     Block device mapping.
+    #   '';
     # };    
 
     # deployment.hetznerCloud.serverNetworks = mkOption {
     #   default = [];
     #   type = types.listOf (types.submodule hetznerCloudServerNetworkOptions);
     # };
-
     # deployment.hetznerCloud.ipAddress = mkOption {
     #   default = null;
     #   example = "resources.hetznerCloudFloatingIPs.exampleIP";
@@ -132,7 +144,6 @@ in
     # };
     
     deployment.hetznerCloud.labels = commonHetznerCloudOptions.labels;
-
 
     # fileSystems = mkOption {
     #   type = with types; loaOf (submodule fileSystemOptions);

@@ -1,4 +1,5 @@
-{ apiToken ? "qFYCZtzCGcWVdIaje8fQWSOg4RmTICCwcomcOJJtUJcFm3DjDJ9Nl0kkX2ZyrFnx"
+{ apiToken ? "qFYCZtzCGcWVdIaje8fQWSOg4RmTICCwcomcOJJtUJcFm3DjDJ9Nl0kkX2ZyrFnx",
+  location ? "nbg1"
 }:
 {
   network.description = "POC deployment";
@@ -8,11 +9,18 @@
     {
       deployment.targetEnv = "hetznercloud";
       deployment.hetznerCloud = {
-        inherit apiToken;
-        location = "nbg1";
-        #serverName = "trivial-server";
+        inherit apiToken location;
         serverType = "cx11";
+#        blockDeviceMapping = {
+#          "/dev/sdb".volume = resources.hetznerCloudVolumes.volume1;
+#        };
       };
     };
-  
+
+#  resources.hetznerCloudVolumes.volume1 = {
+#    inherit apiToken location;
+#    size = 10;
+#    format = "ext4";
+#  };
+
 }

@@ -7,7 +7,6 @@
 with lib;
 
 {
-  options = {
-    
+  options = {    
   };
 }
