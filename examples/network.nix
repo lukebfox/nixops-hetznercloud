@@ -16,6 +16,10 @@
       { destination = "10.0.4.0/24";
         gateway = "10.0.1.1";
       }
+      { destination = "10.0.5.0/24";
+        gateway = "10.0.1.2";
+      }
+
     ];
   };
 

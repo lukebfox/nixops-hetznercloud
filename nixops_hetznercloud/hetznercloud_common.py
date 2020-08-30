@@ -49,10 +49,6 @@ class HetznerCloudResourceState(DiffEngineResourceState):
     def get_default_name_label(self) -> str:
         return "{0} [{1}]".format(self.depl.description, self.name)
 
-    @property
-    def full_name(self):
-        pass
-
     def get_instance(self):
         try:
             subclient = getattr(self.get_client(), self._resource_type)
@@ -81,6 +77,9 @@ class HetznerCloudResourceState(DiffEngineResourceState):
         self._client = Client(token=self.api_token)
         return self._client
 
+    def reset_client(self) -> None:
+        self._client = None
+
     def wait_for_resource_available(self, resource_id: str, resource_type="") -> None:
         if resource_type == "":
             resource_type = self._resource_type
@@ -102,6 +101,3 @@ class HetznerCloudResourceState(DiffEngineResourceState):
             self.logger.log_continue("{0}: {1}%\r".format(message, action.progress))
             time.sleep(1)
             action = self.get_client().actions.get_by_id(action.id)
-
-    def reset_client(self) -> None:
-        self._client = None

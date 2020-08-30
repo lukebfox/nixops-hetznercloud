@@ -2,9 +2,12 @@
 
 # Automatic provisioning of Hetzner Cloud Networks.
 
+import json
+
 from hcloud import APIException
 from hcloud.networks.domain import NetworkSubnet, NetworkRoute
 
+from nixops.util import ImmutableMapping
 from nixops.diff import Handler
 from nixops.resources import ResourceDefinition
 from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
@@ -24,13 +27,41 @@ class NetworkDefinition(ResourceDefinition):
     def get_type(cls):
         return "hetznercloud-network"
 
+    # def __init__(self, name, config):
+    #     super().__init__(name,config)
+        
+    #     def parse_route(x: RouteOptions):
+    #         result = {}
+    #         result["gateway"] = x.gateway
+    #         result["destination"] = x.destination
+    #         # sanity check
+    #         return result
+
+#        a=self.config.routes
+#        print(a)
+#        print(type(a[0]))
+ 
+#        b=[parse_route(r) for r in self.config.routes] 
+#        print(b)
+#        print(type(b[0]))
+        
+#        c=[tuple(r.values()) for r in b]
+#        print(c)
+#        print(type(c[0]))
+        
+#        print(type(self.config.routes[0]), type(config.routes[0]))
+#        print(type(a[0]),type(c[0]))
+#        print(b==c)
+#        print(b[0]==c[0])
+#        print(b[0]["gateway"]==c[0]["gateway"])
+
+
     @classmethod
     def get_resource_type(cls):
         return "hetznerCloudNetworks"
 
     def show_type(self):
         return "{0}".format(self.get_type())
-
 
 class NetworkState(HetznerCloudResourceState):
     """
@@ -76,8 +107,8 @@ class NetworkState(HetznerCloudResourceState):
 
     @property
     def full_name(self):
-        return "Hetzner Cloud Network {0} [{1}]".format(
-            self.resource_id, self._state.get("name", None)
+        return "Hetzner Cloud Network {0}".format(
+            self.resource_id
         )
 
     def prefix_definition(self, attr):
@@ -153,6 +184,11 @@ class NetworkState(HetznerCloudResourceState):
 
         self.wait_for_resource_available(self.network_id)
 
+#    def parse_route(self, routes: x: RouteOptions):
+#        result = dict(x)
+#        result][
+        
+
     def realise_modify_subnets(self, allow_recreate):
         config = self.get_defn()
         self.logger.log("updating subnets for {0}...".format(self.full_name))
@@ -189,14 +225,24 @@ class NetworkState(HetznerCloudResourceState):
         config = self.get_defn()
         self.logger.log("updating routes for {0}...".format(self.full_name))
 
-        prev_routes = set(self._state.get("routes", []))
-        final_routes = set(config.routes)
+        # route definition :: List[RouteOptions] and are stored as dicts
+        # but for the purposes of fast diffing lists of RouteOptions
 
-        def delete(route: RouteOptions):
+        def parse_route(r: RouteOptions):
+            result = {}
+            result["destination"]=r.destination
+            result["gateway"]=r.gateway
+            # return result
+            return frozenset(result.items())
+        
+        prev_routes = {frozenset(x.items()) for x in self._state.get("routes", [])}
+        final_routes = {parse_route(x) for x in config.routes}
+
+        def delete(route):
             r = NetworkRoute.from_dict(dict(route))
-            action = self.get_instance().delete_route(r)
             self.wait_with_progress(
-                action, "deleting route for {0}".format(route.destination)
+                self.get_instance().delete_route(r),
+                "deleting route for {0}".format(r.destination)
             )
 
         routes_to_delete = list(prev_routes - final_routes)
@@ -205,11 +251,11 @@ class NetworkState(HetznerCloudResourceState):
             list(map(delete, routes_to_delete))
             self.logger.log_end("")
 
-        def add(route: RouteOptions):
+        def add(route):
             r = NetworkRoute.from_dict(dict(route))
-            action = self.get_instance().add_route(r)
             self.wait_with_progress(
-                action, "adding route for {0}".format(route.destination)
+                self.get_instance().add_route(r),
+                "adding route for {0}".format(r.destination)
             )
 
         routes_to_add = list(final_routes - prev_routes)
@@ -219,7 +265,7 @@ class NetworkState(HetznerCloudResourceState):
             self.logger.log_end("")
 
         with self.depl._db:
-            self._state["routes"] = list(final_routes)
+            self._state["routes"] = list(map(dict,final_routes))
 
     def realise_modify_labels(self, allow_recreate):
         config = self.get_defn()
