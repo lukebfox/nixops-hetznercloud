@@ -6,7 +6,7 @@ import socket
 import getpass
 import time
 
-from hcloud import Client
+from hcloud import Client, APIException
 from hcloud.actions.client import BoundAction
 
 from nixops.util import attr_property
@@ -18,6 +18,8 @@ from typing import Dict
 class HetznerCloudResourceState(DiffEngineResourceState):
 
     COMMON_HCLOUD_RESERVED = ["apiToken"]
+
+    _resource_type: str
 
     state = attr_property("state", ResourceState.MISSING, int)
     api_token = attr_property("apiToken", None)
@@ -47,6 +49,21 @@ class HetznerCloudResourceState(DiffEngineResourceState):
     def get_default_name_label(self) -> str:
         return "{0} [{1}]".format(self.depl.description, self.name)
 
+    @property
+    def full_name(self):
+        pass
+
+    def get_instance(self):
+        try:
+            subclient = getattr(self.get_client(), self._resource_type)
+            return subclient.get_by_id(self.resource_id)
+        except APIException as e:
+            if e.code == "not_found":
+                self.warn("{0} was deleted from outside nixops".format(self.full_name))
+                return None
+            else:
+                raise
+
     def get_client(self) -> Client:
         """
         Generic method to get or create a Hetzner Cloud client.
@@ -64,8 +81,11 @@ class HetznerCloudResourceState(DiffEngineResourceState):
         self._client = Client(token=self.api_token)
         return self._client
 
-    def wait_for_resource_available(self, subclient, resource_id) -> None:
+    def wait_for_resource_available(self, resource_id: str, resource_type="") -> None:
+        if resource_type == "":
+            resource_type = self._resource_type
         while True:
+            subclient = getattr(self.get_client(), resource_type)
             resource = subclient.get_by_id(resource_id)
             if resource.created is None:
                 self.logger.log_continue(".")

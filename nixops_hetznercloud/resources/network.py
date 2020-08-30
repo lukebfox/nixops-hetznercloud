@@ -2,7 +2,7 @@
 
 # Automatic provisioning of Hetzner Cloud Networks.
 
-import hcloud
+from hcloud import APIException
 from hcloud.networks.domain import NetworkSubnet, NetworkRoute
 
 from nixops.diff import Handler
@@ -37,6 +37,7 @@ class NetworkState(HetznerCloudResourceState):
     State of a Hetzner Cloud Network.
     """
 
+    _resource_type = "networks"
     _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + ["networkId"]
 
     @classmethod
@@ -73,9 +74,6 @@ class NetworkState(HetznerCloudResourceState):
     def resource_id(self):
         return self._state.get("networkId", None)
 
-    def network(self):
-        return self.get_client().networks.get_by_id(self.resource_id)
-
     @property
     def full_name(self):
         return "Hetzner Cloud Network {0} [{1}]".format(
@@ -105,31 +103,18 @@ class NetworkState(HetznerCloudResourceState):
 
     def _check(self):
         if self.resource_id is None:
-            return
-        try:
-            self.get_client().networks.get_by_id(self.resource_id)
-        except hcloud.APIException as e:
-            if e.code == "not_found":
-                self.warn(
-                    "{0} was deleted from outside nixops,"
-                    " it needs to be recreated...".format(self.full_name)
-                )
-                self.cleanup_state()
-                return
-        if self.state == self.STARTING:
-            self.wait_for_resource_available(
-                self.get_client().networks, self.resource_id
-            )
+            pass
+        elif self.get_instance() is None:
+            self.warn(" it needs to be recreated...")
+            self.cleanup_state()
+        elif self.state == self.STARTING:
+            self.wait_for_resource_available(self.resource_id)
 
     def _destroy(self):
-        self.logger.log("destroying {0}...".format(self.full_name))
-        try:
-            self.get_client().networks.get_by_id(self.resource_id).delete()
-        except hcloud.APIException as e:
-            if e.code == "not_found":
-                self.warn("{0} was already deleted".format(self.full_name))
-            else:
-                raise e
+        instance = self.get_instance()
+        if instance is not None:
+            self.logger.log("destroying {0}...".format(self.full_name))
+            instance.delete()
         self.cleanup_state()
 
     def realise_create_network(self, allow_recreate):
@@ -153,7 +138,7 @@ class NetworkState(HetznerCloudResourceState):
             self.network_id = (
                 self.get_client().networks.create(name=name, ip_range=config.ipRange).id
             )
-        except hcloud.APIException as e:
+        except APIException as e:
             if e.code == "invalid_input":
                 raise Exception(
                     "couldn't create Network Resource due to {0}".format(e.message)
@@ -166,7 +151,7 @@ class NetworkState(HetznerCloudResourceState):
             self._state["networkId"] = self.network_id
             self._state["ipRange"] = config.ipRange
 
-        self.wait_for_resource_available(self.get_client().networks, self.network_id)
+        self.wait_for_resource_available(self.network_id)
 
     def realise_modify_subnets(self, allow_recreate):
         config = self.get_defn()
@@ -177,7 +162,7 @@ class NetworkState(HetznerCloudResourceState):
 
         def delete(ip_range: str):
             subnet = NetworkSubnet(ip_range, "cloud", "eu-central")
-            action = self.network().delete_subnet(subnet)
+            action = self.get_instance().delete_subnet(subnet)
             self.wait_with_progress(action, "deleting subnet {0}".format(ip_range))
 
         subnets_to_delete = list(prev_subnets - final_subnets)
@@ -188,7 +173,7 @@ class NetworkState(HetznerCloudResourceState):
 
         def add(ip_range: str):
             subnet = NetworkSubnet(ip_range, "cloud", "eu-central")
-            action = self.network().add_subnet(subnet)
+            action = self.get_instance().add_subnet(subnet)
             self.wait_with_progress(action, "adding subnet {0}".format(ip_range))
 
         subnets_to_add = list(final_subnets - prev_subnets)
@@ -209,7 +194,7 @@ class NetworkState(HetznerCloudResourceState):
 
         def delete(route: RouteOptions):
             r = NetworkRoute.from_dict(dict(route))
-            action = self.network().delete_route(r)
+            action = self.get_instance().delete_route(r)
             self.wait_with_progress(
                 action, "deleting route for {0}".format(route.destination)
             )
@@ -222,7 +207,7 @@ class NetworkState(HetznerCloudResourceState):
 
         def add(route: RouteOptions):
             r = NetworkRoute.from_dict(dict(route))
-            action = self.network().add_route(r)
+            action = self.get_instance().add_route(r)
             self.wait_with_progress(
                 action, "adding route for {0}".format(route.destination)
             )
@@ -240,7 +225,7 @@ class NetworkState(HetznerCloudResourceState):
         config = self.get_defn()
         self.logger.log("updating labels for {0}".format(self.full_name))
 
-        self.get_client().networks.get_by_id(self.resource_id).update(
+        self.get_instance().update(
             labels={**self.get_common_labels(), **dict(config.labels)}
         )
         with self.depl._db:

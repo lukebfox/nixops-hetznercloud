@@ -2,7 +2,7 @@
 
 # Automatic provisioning of Hetzner Cloud Certificates.
 
-import hcloud
+from hcloud import APIException
 
 from nixops.diff import Handler
 from nixops.resources import ResourceDefinition
@@ -35,6 +35,7 @@ class CertificateState(HetznerCloudResourceState):
     State of a Certificate.
     """
 
+    _resource_type = "certificates"
     _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + [
         "certificateId"
     ]
@@ -82,34 +83,18 @@ class CertificateState(HetznerCloudResourceState):
 
     def _check(self):
         if self.resource_id is None:
-            return
-        try:
-            self.get_client().certificates.get_by_id(self.resource_id)
-        except hcloud.APIException as e:
-            if e.code == "not_found":
-                self.warn(
-                    "{0} was deleted from outside nixops,"
-                    " it needs to be recreated...".format(self.full_name)
-                )
-                self.cleanup_state()
-                return
-        if self.state == self.STARTING:
-            self.wait_for_resource_available(
-                self.get_client().certificates, self.resource_id
-            )
+            pass
+        elif self.get_instance() is None:
+            self.warn(" it needs to be recreated...")
+            self.cleanup_state()
+        elif self.state == self.STARTING:
+            self.wait_for_resource_available(self.resource_id)
 
     def _destroy(self):
-        if self.state != self.UP:
-            return
-        self.logger.log("destroying {0}...".format(self.full_name))
-        try:
-            self.get_client().certificates.get_by_id(self.resource_id).delete()
-        except hcloud.APIException as e:
-            if e.code == "not_found":
-                self.warn("{0} was already deleted".format(self.full_name))
-            else:
-                raise e
-
+        instance = self.get_instance()
+        if instance is not None:
+            self.logger.log("destroying {0}...".format(self.full_name))
+            instance.delete()
         self.cleanup_state()
 
     def realise_create_certificate(self, allow_recreate):
@@ -139,7 +124,7 @@ class CertificateState(HetznerCloudResourceState):
                 labels={**self.get_common_labels(), **dict(config.labels)},
             )
             self.certificate_id = bound_certificate.id
-        except hcloud.APIException as e:
+        except APIException as e:
             if e.code == "invalid_input":
                 raise Exception(
                     "couldn't create Certificate Resource due to {}".format(e.message)
@@ -154,9 +139,7 @@ class CertificateState(HetznerCloudResourceState):
             self._state["privateKey"] = config.privateKey
             self._state["labels"] = dict(config.labels)
 
-        self.wait_for_resource_available(
-            self.get_client().certificates, self.certificate_id
-        )
+        self.wait_for_resource_available(self.certificate_id)
 
     def destroy(self, wipe=False):
         self._destroy()

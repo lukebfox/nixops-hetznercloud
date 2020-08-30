@@ -6,28 +6,9 @@ with lib;
 
 {
 
-  options = {
+  imports = [ ./common-volume-options.nix ];
 
-    size = mkOption {
-      default = "10";
-      example = "50";
-      type = types.int;
-      description = ''
-        Size of the volume in GB. Standard limits are between 10GB and
-        1024GB. It is possible to increase the upper limit to 10240GB
-        on request. 
-      '';
-    };
-   
-    fsType = mkOption {
-      default = "ext4";
-      example = "xfs";
-      type = types.enum ["ext4" "xfs"];
-      description = ''
-        The filesystem format for this volume.
-        Choices are 'ext4' or 'xfs'.
-      '';
-    };
+  options = {
     
     location = mkOption {
       default = null;
@@ -39,16 +20,6 @@ with lib;
       '';
     };
 
-#    serverID = mkOption {
-#      default = null;
-#      example = "machines.webserver";
-#      type = types.nullOr machine;
-#      description = ''
-#        The ID of the server to attach the volume to.
-#        Location of the server and the volume must be the same.
-#      '';
-#    };
-
     volumeId = mkOption {
       default = "";
       type = types.str;
@@ -58,9 +29,6 @@ with lib;
     };
     
   } // import ./common-hetznercloud-options.nix { inherit lib; };
-
-  config = {
-  };
 
   config._type = "hetznercloud-volume"; 
   

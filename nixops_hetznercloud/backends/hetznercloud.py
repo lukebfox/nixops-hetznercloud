@@ -8,7 +8,7 @@ import time
 import socket
 import getpass
 
-import hcloud
+from hcloud import APIException
 from hcloud import Client
 from hcloud.actions.client import BoundAction
 from hcloud.images.client import BoundImage
@@ -25,13 +25,12 @@ from nixops.nix_expr import RawValue
 from nixops.resources import ResourceEval
 from nixops.util import attr_property, create_key_pair, check_wait
 
-import nixops_hetznercloud.resources
 from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
 from nixops_hetznercloud.resources.floating_ip import FloatingIPState
 from nixops_hetznercloud.resources.network import NetworkState
 from nixops_hetznercloud.resources.volume import VolumeState
 
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Any
 
 from .options import HetznerCloudMachineOptions
 
@@ -60,11 +59,7 @@ class HetznerCloudDefinition(MachineDefinition):
         self.location = self.config.hetznerCloud.location
         self.server_name = self.config.hetznerCloud.serverName
         self.server_type = self.config.hetznerCloud.serverType
-        # self.block_device_mapping = {
-        #     k: dict(v)
-        #     for k, v
-        #     in self.config.hetznerCloud.blockDeviceMapping.items()
-        # }
+        self.volumes = [dict(x) for x in self.config.hetznerCloud.volumes]
         # self.networks = self.config.hetznerCloud.networks
         # self.ip_address = self.config.hetznerCloud.ipAddress
 
@@ -83,7 +78,6 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
 
     state = attr_property("state", MachineState.MISSING, int)  # override
     api_token = attr_property("hetznerCloud.apiToken", None)
-    server_id = attr_property("serverId", None, int)
     public_ipv4 = attr_property("publicIpv4", None)
     public_ipv6 = attr_property("publicIpv6", None)
     private_ipv4 = attr_property("privateIpv4", None)
@@ -95,7 +89,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
     location = attr_property("hetznerCloud.location", None)
     server_name = attr_property("hetznerCloud.serverName", None)
     server_type = attr_property("hetznerCloud.serverType", None)
-    # block_device_mapping = attr_property("hetznerCloud.blockDeviceMapping", {}, "json")
+    volumes = attr_property("hetznerCloud.volumes", [], "json")
     # networks = attr_property("hetznerCloud.networks", None)
     # ip_address = attr_property("hetznerCloud.ipAddress", None)
 
@@ -106,7 +100,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
     def cleanup_state(self):
         """ Discard all state pertaining to an instance. """
         with self.depl._db:
-            self.server_id = None
+            self.vm_id = None
             self.public_ipv4 = None
             self.public_ipv6 = None
             self.private_client_key = None
@@ -117,7 +111,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             self.server_name = None
             self.server_type = None
             self.labels = {}
-            # self.blockDeviceMapping = {}
+            self.volumes = []
             # self.ip_address = None
             # self.networks = None
 
@@ -132,7 +126,14 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         return "Hetzner Cloud Server '{0}'".format(self.name)
 
     def _get_instance(self) -> BoundServer:
-        return self.get_client().servers.get_by_id(self.server_id)
+        try:
+            return self.get_client().servers.get_by_id(self.vm_id)
+        except APIException as e:
+            if e.code == "not_found":
+                self.warn(
+                    "{0} was deleted from outside of nixops".format(self.full_name)
+                )
+            return None
 
     def get_client(self) -> Client:
         """
@@ -181,89 +182,101 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         super_flags = super(HetznerCloudState, self).get_ssh_flags(*args, **kwargs)
         return super_flags + ["-i", self.get_ssh_private_key_file()]
 
+    def get_udev_name(self, volume_id: str):
+        return "/dev/disk/by-id/scsi-0HC_Volume_{0}".format(volume_id)
+
     def get_physical_spec(self):
         spec = {
             "imports": [RawValue("<nixpkgs/nixos/modules/profiles/qemu-guest.nix>")],
             ("boot", "loader", "grub", "device"): "nodev",
             ("fileSystems", "/"): {"device": "/dev/sda1", "fsType": "ext4"},
+            **{
+                ("fileSystems", v["mountPoint"], "device"): v["device"]
+                for v in self.volumes
+                if "device" in v
+            },
+            ("deployment", "hetznerCloud", "volumes"): self.volumes,
             ("users", "extraUsers", "root", "openssh", "authorizedKeys", "keys"): [
                 self.public_client_key
             ],
         }
-        print(type(spec))
         print(spec)
         return spec
 
-    # def update_block_device_mapping(self, k, v) -> None:
-    #     x = self.block_device_mapping
-    #     if v is None:
-    #         x.pop(k, None)
-    #     else:
-    #         x[k] = v
-    #     self.block_device_mapping = x
+    def update_volume(self, v: Dict[str, Any]) -> None:
+        volumes = list(self.volumes)
+        for i, x in enumerate(volumes):
+            if x["volume"] == v["volume"]:
+                volumes[i] = v
+                self.volumes = volumes
+                return
+        # doesn't exist, add new entry
+        volumes.append(v)
+        self.volumes = volumes
 
-    # def attach_volume(self, device: str, volume_name: str) -> None:
-        
-    #     # Check volume exists.
-        
-    #     volume: BoundVolume = self.get_client().volumes.get_by_name(volume_name)
-    #     if not volume:
-    #         raise Exception(
-    #             "volume {0} doesn't exist, run check to update the state of the volume".format(
-    #                 volume_name
-    #             )
-    #         )
-    #     if (
-    #         self.vm_id != volume.server.id
-    #         and self.depl.logger.confirm(
-    #             "volume ‘{0}’ is in use by instance ‘{1}’, "
-    #             "are you sure you want to attach this volume?".format(
-    #                 volume_name, volume.server.id
-    #             )
-    #         )
-    #     ):
-    #         self.log_start(
-    #             "detaching volume ‘{0}’ from instance ‘{1}’... ".format(
-    #                 volume_name, volume.server.id
-    #             )
-    #         )
-    #         volume.detach().wait_until_finished()
+    def attach_volume(self, v: Dict[str, Any]) -> None:
+        """
+        Attaches an existing Hetzner Cloud Volume to this instance.
+        """
 
-    #     # Attach volume.
+        # Check volume exists and made available.
 
-    #     self.log_start(
-    #         "attaching volume ‘{0}’ as ‘{1}’... ".format(volume_name, device)
-    #     )
-    #     if self.vm_id != volume.server.id:
-    #         self.get_client().volumes.get_by_name(volume_name).attach(
-    #             self._get_instance(), automount=False
-    #         ).wait_until_finished()
+        volume: BoundVolume = self.get_client().volumes.get_by_name(v["volume"])
+        if not volume:
+            raise Exception(
+                "volume {0} doesn't exist, run check to update the state of the volume".format(
+                    v["volume"]
+                )
+            )
+        if (
+            volume.server
+            and self.vm_id != volume.server.id
+            and self.depl.logger.confirm(
+                "volume ‘{0}’ is in use by instance ‘{1}’, "
+                "are you sure you want to attach this volume?".format(
+                    v["volume"], volume.server.id
+                )
+            )
+        ):  # noqa: E124
+            self.logger.log_start(
+                "detaching volume ‘{0}’ from instance ‘{1}’... ".format(
+                    v["volume"], volume.server.id
+                )
+            )
+            volume.detach().wait_until_finished()
 
-    #     # Wait until the device is visible in the instance.
-    #     def check_device():
-    #         res = self.run_command("test -e {0}".format(device), check=False)
-    #         return res == 0
+        # Attach volume.
 
-    #     if not check_wait(
-    #         check_device, initial=1, max_tries=10, exception=False
-    #     ):
-    #         # If stopping times out, then do an unclean shutdown.
-    #         self.logger.log_end("(timed out)")
+        self.logger.log_start("attaching volume ‘{0}’... ".format(v["volume"]))
+        volume = self.get_client().volumes.get_by_name(v["volume"])
+        volume.attach(self._get_instance()).wait_until_finished()
 
-    #         self.logger.log("can't find device ‘{0}’...".format(device))
-    #         self.logger.log("available devices:")
-    #         self.run_command("lsblk")
+        # Wait until the device is visible in the instance.
 
-    #         raise Exception("operation timed out")
-    #     else:
-    #         self.log_end("")
+        v["device"] = self.get_udev_name(volume.id)
 
-    # def detach_volume(self, volume_name: str):
-    #     pass
+        def check_device():
+            res = self.run_command("test -e {0}".format(v["device"]), check=False)
+            return res == 0
+
+        if not check_wait(check_device, initial=1, max_tries=10, exception=False):
+            # If stopping times out, then do an unclean shutdown.
+            self.logger.log_end("(timed out)")
+            self.logger.log("can't find device ‘{0}’...".format(v["device"]))
+            self.logger.log("available devices:")
+            self.run_command("lsblk")
+            raise Exception("operation timed out")
+        else:
+            self.logger.log_end("")
+
+    def mount_volume(self, v: Dict[str, Any]) -> None:
+        volume = self.get_client().volumes.get_by_name(v["volume"])
+        v["device"] = self.get_udev_name(volume.id)
 
     def create_after(self, resources, defn) -> Set[HetznerCloudResourceState]:
         return {
-            r for r in resources
+            r
+            for r in resources
             if isinstance(r, FloatingIPState)
             or isinstance(r, NetworkState)
             or isinstance(r, VolumeState)
@@ -284,7 +297,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         )
         return ssh_key
 
-    def create(
+    def create(  # noqa: C901
         self, defn: HetznerCloudDefinition, check, allow_reboot, allow_recreate
     ) -> None:
 
@@ -300,14 +313,14 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
 
         # Stop the instance (if allowed) to change instance attributes
         # such as the server type.
-        if self.server_id and allow_reboot and (self.server_type != defn.server_type):
+        if self.vm_id and allow_reboot and (self.server_type != defn.server_type):
             self.stop()
             check = True
 
         # Check whether the instance hasn't been killed behind our backs.
         # Handle changed server type.
         # Restart stopped instances.
-        if self.server_id and check:
+        if self.vm_id and check:
             instance = self._get_instance()
 
             if instance is None or instance.status in {"deleting"}:
@@ -344,7 +357,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                 self.start()
 
         # create the instance.
-        if not self.server_id:
+        if not self.vm_id:
 
             if not self.public_client_key:
                 (private, public) = create_key_pair()
@@ -363,6 +376,9 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             server_type: BoundServerType = self.get_client().server_types.get_by_name(
                 defn.server_type
             )
+
+            # TODO auto create vols
+            # volumes: List[BoundVolume] = self._create_volumes()
 
             ssh_keys: List[BoundSSHKey] = [self._create_ssh_key(self.public_client_key)]
 
@@ -401,7 +417,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             self.wait_on_action(response.action)
 
             with self.depl._db:
-                self.server_id = response.server.id
+                self.vm_id = response.server.id
                 self.public_ipv4 = response.server.public_net.ipv4.ip
                 self.public_ipv6 = response.server.public_net.ipv6.ip
                 self.server_name = defn.server_name
@@ -442,17 +458,38 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                 defn.server_name, {**self.get_common_labels(), **dict(defn.labels)}
             )
 
-        # # Detect missing volumes
-        # expected_attached_volumes = [x.volume for x in self.block_device_mapping.values()]
-        # actually_attached_volumes = [x.name for x in self._get_instance().volumes]
-        # missing = list(set(expected_attached_volumes) - set(actually_attached_volumes))
-        # self.logger.log("missing volumes: {0}".format(missing))
-        
-        # # Attach missing volumes
-        # for device, v in self.block_device_mapping().items():
-        #     self.logger.log("attaching volume {1} as {0}".format(device, v))
-        #     self.attach_volume(device, v.volume)
-        #     self.update_block_device_mapping(device, v)
+        # We need to attach any missing volumes
+        # 1. Expected attached volumes are given as a list of BoundVolume in self.volumes
+        # 2. Really attached volumes are given as a list of DiskOption in self._get_instance().volumes
+        # 3. Final attached volumes are given as a list of DiskOption in defn.volumes
+
+        # identify volumes which got detached with 1-2
+
+        self.volumes = defn.volumes
+
+        # Attach missing volumes (3-2)
+
+        attached: Set[str] = {x.name for x in self._get_instance().volumes}
+        for v in defn.volumes:
+            if v["volume"] not in attached:
+                self.logger.log("missing volume: {0}".format(v["volume"]))
+                self.attach_volume(v)
+                self.update_volume(v)
+
+        # Ensure filesystem devices are correct for all mounted volumes.
+
+        # Hetzner Cloud volume device names follow a specification that
+        # uses a fixed prefix suffixed by the volume id. Because this
+        # isn't known until deployment, we delayed setting the
+        # config.fileSystems.<name?>.device option. The workaround is to
+        # define this option in the deployment's physical spec. After
+        # attaching any volume which needs mounting, define a device
+        # key/value entry for the volume entry in self.volumes. This will
+        # get used when building the physical spec after instance creation.
+        for v in defn.volumes:
+            if v["mountPoint"]:
+                self.mount_volume(v)
+                self.update_volume(v)
 
     # def _destroy_volume(self, volume_id: str, allow_keep=False) -> None:
     #     if not self.depl.logger.confirm(
@@ -462,7 +499,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
     #             return
     #         else:
     #             raise Exception("not destroying Hetzner Cloud volume ‘{0}’".format(volume_id))
-    #     self.log("destroying Hetzner Cloud volume ‘{0}’...".format(volume_id))
+    #     self.logger.log("destroying Hetzner Cloud volume ‘{0}’...".format(volume_id))
     #     volume = self.get_client().volumes.get_by_id(volume_id, allow_missing=True)
     #     if volume is not None:
     #         volume.delete().wait_until_finished
@@ -472,13 +509,15 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             return
         self.logger.log("destroying {0}...".format(self.full_name))
         try:
-            self.get_client().servers.get_by_id(self.server_id).delete()
-        except hcloud.APIException as e:
+            self.get_client().servers.get_by_id(self.vm_id).delete()
+        except APIException as e:
             if e.code == "not_found":
                 self.warn("{0} was already deleted".format(self.full_name))
+
+        # remove host ssh key
         self.get_client().ssh_keys.get_by_name(
-            "nixops-{0}-{1}".format(self.depl.uuid,self.name)
-        ).delete
+            "nixops-{0}-{1}".format(self.depl.uuid, self.name)
+        ).delete()
         known_hosts.remove(self.public_ipv4, self.public_host_key)
         self.cleanup_state()
 

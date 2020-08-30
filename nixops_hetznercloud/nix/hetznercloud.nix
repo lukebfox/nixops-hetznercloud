@@ -42,46 +42,69 @@ let
   #     config = { };
   #   };
 
-  # hetznerCloudDiskOptions =
-  #   { config, ... }:
-  #   {
-  #     # imports = [ ./common-volume-options.nix ];
-  #     options = {
-  #       volume = mkOption {
-  #         example = "volume1";
-  #         type = with types; either str (resource "hetznercloud-volume");
-  #         apply = x: if builtins.isString x then x else "nixops-" + uuid + x._name;
-  #         description = ''
-  #           Hetzner Cloud identifier of the disk to be mounted. This can be a
-  #           volume name (e.g. <literal>volume1</literal>). It can also be a 
-  #           Volume resource (e.g. <literal>resources.hetznerCloudVolumes.db</literal>).
-  #           TODO Leave empty to create a HetznerCloud volume automatically. 
-  #         '';
-  #       };
-  #     };
-  #   };
+  hetznerCloudDiskOptions =
+    { config, ... }:
+    {
+    
+      imports = [ ./common-volume-options.nix ];
+      
+      options = {
+        
+        volume = mkOption {
+          default = "";
+          example = "volume1";
+          type = with types; either str (resource "hetznercloud-volume");
+          apply = x: if builtins.isString x then x else "nixops-" + uuid + "-" + x._name;
+          description = ''
+            Hetzner Cloud identifier of the disk to be mounted. This can 
+            be the name (e.g. <literal>volume1</literal>) of a disk not 
+            managed by NixOps. It can also be a Volume resource (e.g.
+            <literal>resources.hetznerCloudVolumes.db</literal>).
+            Leave empty to create a HetznerCloud volume automatically. 
+          '';
+        };
 
-  # fileSystemsOptions =
-  #  { config, ... }:
-  #  {
-  #    options.hetznerCloud = mkOption {
-  #      default = null;
-  #      type = with types; (nullOr (submodule hetznerCloudDiskOptions));
-  #      description = ''
-  #        Hetzner Cloud volume to be attached to this mount point. 
-  #        This is shorthand for defining a separate
-  #        <option>deployment.hetznerCloud.blockDeviceMapping</option>
-  #        attribute.
-  #      '';
-  #    };
-  #    config = mkIf (config.hetznerCloud != null) {
-  #      device = mkDefault "${
-  #        hetznercloud_dev_prefix
-  #      }${
-  #        get_disk_name (mkDefaultDiskName config.mountPoint config.hetznercloud)
-  #      }";
-  #    };
-  #  };
+        mountPoint = mkOption {
+          type = types.str;
+          description = "The mountpoint for this volume.";
+        };
+
+        deleteOnTermination = mkOption {
+          type = types.bool;
+          description = ''
+            For automatically created Hetzner Cloud volumes, determines whether the
+            volume should be deleted on instance termination.
+          '';
+        };
+      };
+      
+      config = {
+        deleteOnTermination = mkDefault (config.volume == "");
+      };
+      
+    };
+
+  fileSystemsOptions =
+    { config, ... }:
+    {
+      options.hetznerCloud = mkOption {
+        default = null;
+        type = with types; (nullOr (submodule hetznerCloudDiskOptions));
+        description = ''
+          Hetzner Cloud volume to be attached to this mount point. 
+          This is shorthand for defining a separate
+          <option>deployment.hetznerCloud.volumes</option> attribute
+          entry.
+        '';
+      };
+      config = mkAssert
+        ( (config.hetznerCloud != null) || (config.device == null) )
+        ''
+        Configuring fileSystem.<name?>.device is not supported for filesystems
+        on mounted Hetzner Cloud Volumes. This option definition is calculated runtime.
+        ''
+        {};
+    };
 
 in
 
@@ -121,19 +144,20 @@ in
       '';
     };
 
-    # deployment.hetznerCloud.blockDeviceMapping = mkOption {
-    #   default = { };
-    #   example = { "/dev/sdb".volume = "volume1"; };
-    #   type = with types; attrsOf (submodule hetznerCloudDiskOptions);
-    #   description = ''
-    #     Block device mapping.
-    #   '';
-    # };    
+    deployment.hetznerCloud.volumes = mkOption {
+      default = [ ];
+      example = [ { volume = "volume1"; } ];
+      type = with types; listOf (submodule hetznerCloudDiskOptions);
+      description = ''
+        TODO
+      '';
+    };    
 
     # deployment.hetznerCloud.serverNetworks = mkOption {
     #   default = [];
     #   type = types.listOf (types.submodule hetznerCloudServerNetworkOptions);
     # };
+
     # deployment.hetznerCloud.ipAddress = mkOption {
     #   default = null;
     #   example = "resources.hetznerCloudFloatingIPs.exampleIP";
@@ -145,9 +169,9 @@ in
     
     deployment.hetznerCloud.labels = commonHetznerCloudOptions.labels;
 
-    # fileSystems = mkOption {
-    #   type = with types; loaOf (submodule fileSystemOptions);
-    # };
+    fileSystems = mkOption {
+      type = with types; loaOf (submodule fileSystemsOptions);
+    };
 
   };
 
@@ -155,6 +179,14 @@ in
   config = mkIf (config.deployment.targetEnv == "hetznercloud") {
     nixpkgs.system = mkOverride 900 "x86_64-linux";
     services.openssh.enable = true;
+
+    deployment.hetznerCloud.volumes = mkFixStrictness
+      (map
+        (fs: {
+          inherit (fs) mountPoint;
+          inherit (fs.hetznerCloud) volume size fsType deleteOnTermination;
+        })
+        (filter (fs: fs.hetznerCloud != null) (attrValues config.fileSystems)));
   };
 
 }

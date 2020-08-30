@@ -2,7 +2,7 @@
 
 # Automatic provisioning of Hetzner Cloud SSH Keys.
 
-import hcloud
+from hcloud import APIException
 
 from nixops.diff import Handler
 from nixops.resources import ResourceDefinition
@@ -35,6 +35,7 @@ class SSHKeyState(HetznerCloudResourceState):
     State of an SSH Key.
     """
 
+    _resource_type = "ssh_keys"
     _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + ["sshKeyId"]
 
     @classmethod
@@ -78,34 +79,18 @@ class SSHKeyState(HetznerCloudResourceState):
 
     def _check(self):
         if self.resource_id is None:
-            return
-        try:
-            self.get_client().ssh_keys.get_by_id(self.resource_id)
-        except hcloud.APIException as e:
-            if e.code == "not_found":
-                self.warn(
-                    "{0} was deleted from outside nixops,"
-                    " it needs to be recreated...".format(self.full_name)
-                )
-                self.cleanup_state()
-                return
-        if self.state == self.STARTING:
-            self.wait_for_resource_available(
-                self.get_client().ssh_keys, self.resource_id
-            )
+            pass
+        elif self.get_instance() is None:
+            self.warn(" it needs to be recreated...")
+            self.cleanup_state()
+        elif self.state == self.STARTING:
+            self.wait_for_resource_available(self.resource_id)
 
     def _destroy(self):
         if self.state != self.UP:
             return
         self.logger.log("destroying {0}...".format(self.full_name))
-        try:
-            self.get_client().ssh_keys.get_by_id(self.resource_id).delete()
-        except hcloud.APIException as e:
-            if e.code == "not_found":
-                self.warn("{0} was already deleted".format(self.full_name))
-            else:
-                raise e
-
+        self.get_instance().delete()
         self.cleanup_state()
 
     def realise_create_ssh_key(self, allow_recreate):
@@ -129,13 +114,16 @@ class SSHKeyState(HetznerCloudResourceState):
 
         self.logger.log("creating ssh key '{}'...".format(name))
         try:
-            bound_ssh_key = self.get_client().ssh_keys.create(
-                name=name,
-                public_key=config.publicKey,
-                labels={**self.get_common_labels(), **dict(config.labels)},
+            self.ssh_key_id = (
+                self.get_client()
+                .ssh_keys.create(
+                    name=name,
+                    public_key=config.publicKey,
+                    labels={**self.get_common_labels(), **dict(config.labels)},
+                )
+                .id
             )
-            self.ssh_key_id = bound_ssh_key.id
-        except hcloud.APIException as e:
+        except APIException as e:
             if e.code == "invalid_input":
                 raise Exception(
                     "couldn't create SSH Key Resource due to {}".format(e.message)
@@ -149,7 +137,7 @@ class SSHKeyState(HetznerCloudResourceState):
             self._state["publicKey"] = config.publicKey
             self._state["labels"] = dict(config.labels)
 
-        self.wait_for_resource_available(self.get_client().ssh_keys, self.ssh_key_id)
+        self.wait_for_resource_available(self.ssh_key_id)
 
     def destroy(self, wipe=False):
         self._destroy()

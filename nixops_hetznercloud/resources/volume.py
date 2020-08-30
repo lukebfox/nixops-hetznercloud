@@ -2,7 +2,7 @@
 
 # Automatic provisioning of Hetzner Cloud Volumes.
 
-import hcloud
+from hcloud.actions.domain import ActionFailedException, ActionTimeoutException
 
 from nixops.diff import Handler
 from nixops.resources import ResourceDefinition
@@ -35,6 +35,7 @@ class VolumeState(HetznerCloudResourceState):
     State of a Hetzner Cloud Volume.
     """
 
+    _resource_type = "volumes"
     _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + ["volumeId"]
 
     @classmethod
@@ -96,31 +97,20 @@ class VolumeState(HetznerCloudResourceState):
 
     def _check(self):
         if self.resource_id is None:
-            return
-        try:
-            self.get_client().volumes.get_by_id(self.resource_id)
-        except hcloud.APIException as e:
-            if e.code == "not_found":
-                self.warn(
-                    "{0} was deleted from outside nixops,"
-                    " it needs to be recreated...".format(self.full_name)
-                )
-                self.cleanup_state()
-                return
-        if self.state == self.STARTING:
-            self.wait_for_resource_available(
-                self.get_client().volumes, self.resource_id
-            )
+            pass
+        elif self.get_instance() is None:
+            self.warn(" it needs to be recreated...")
+            self.cleanup_state()
+        elif self.state == self.STARTING:
+            self.wait_for_resource_available(self.resource_id)
 
     def _destroy(self):
-        self.logger.log("destroying {0}...".format(self.full_name))
-        try:
-            self.get_client().volumes.get_by_id(self.resource_id).delete()
-        except hcloud.APIException as e:
-            if e.code == "not_found":
-                self.warn("{0} was already deleted".format(self.full_name))
-            else:
-                raise e
+        instance = self.get_instance()
+        if instance is not None:
+            self.logger.log("detaching {0}...".format(self.full_name))
+            instance.detach().wait_until_finished()
+            self.logger.log("destroying {0}...".format(self.full_name))
+            instance.delete()
         self.cleanup_state()
 
     def realise_create_volume(self, allow_recreate):
@@ -155,12 +145,12 @@ class VolumeState(HetznerCloudResourceState):
             if response.action:
                 response.action.wait_until_finished()
             self.volume_id = response.volume.id
-        except hcloud.ActionFailedException:
+        except ActionFailedException:
             raise Exception(
                 "Failed to create Hetzner Cloud volume resource "
                 "with following error: {0}".format(response.action.error)
             )
-        except hcloud.ActionTimeoutException:
+        except ActionTimeoutException:
             raise Exception(
                 "failed to create Hetzner Cloud volume;"
                 " timeout, maximium retries reached (100)"
@@ -173,7 +163,7 @@ class VolumeState(HetznerCloudResourceState):
             self._state["size"] = config.size
             self._state["fsType"] = config.fsType
 
-        self.wait_for_resource_available(self.get_client().volumes, self.volume_id)
+        self.wait_for_resource_available(self.volume_id)
 
     def realise_resize_volume(self, allow_recreate):
         config = self.get_defn()
@@ -187,9 +177,7 @@ class VolumeState(HetznerCloudResourceState):
                 )
             )
 
-            self.get_client().volumes.get_by_id(self.resource_id).resize(
-                config.size
-            ).wait_until_finished()
+            self.get_instance().resize(config.size).wait_until_finished()
 
             with self.depl._db:
                 self._state["size"] = config.size
@@ -198,7 +186,7 @@ class VolumeState(HetznerCloudResourceState):
         config = self.get_defn()
 
         self.logger.log("updating volume labels")
-        self.get_client().volumes.get_by_id(self.resource_id).update(
+        self.get_instance().update(
             labels={**self.get_common_labels(), **dict(config.labels)}
         )
 
