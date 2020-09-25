@@ -3,7 +3,9 @@
 
 with import ./lib.nix lib;
 with lib;
-
+let
+  cfg = config;
+in
 {
 
   imports = [ ./common-volume-options.nix ];
@@ -11,12 +13,11 @@ with lib;
   options = {
     
     location = mkOption {
-      default = null;
       example = "nbg1";
-      type = with types; nullOr (enum ["nbg1" "fsn1" "hel1"]);
+      type = types.enum ["nbg1" "fsn1" "hel1"];
       description = ''
         The ID of the location to create the volume in.
-        Ignored if serverId is set.  Options are 'nbg1', 'fsn1', or 'hel1'.
+        Options are 'nbg1', 'fsn1', or 'hel1'.
       '';
     };
 
@@ -30,6 +31,6 @@ with lib;
     
   } // import ./common-hetznercloud-options.nix { inherit lib; };
 
-  config._type = "hetznercloud-volume"; 
+  config._type = "hetznercloud-volume";
   
 }

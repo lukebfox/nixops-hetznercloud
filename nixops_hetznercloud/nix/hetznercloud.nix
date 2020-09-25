@@ -5,54 +5,54 @@ with import ./lib.nix lib;
 with lib;
 
 let
-    
+
   cfg = config.deployment.hetznerCloud;
 
   hetznercloud_dev_prefix = "/dev/disk/by-id/scsi-0HC_Volume_";
 
   commonHetznerCloudOptions = import ./common-hetznercloud-options.nix { inherit lib; };
 
-  # hetznerCloudServerNetworkOptions =
-  #   { config, ... }:
-  #   {
-  #     options = {
-  #       subnetId = mkOption {
-  #         example = "resources.hetznerCloudNetworkSubnets.subnet-1";
-  #         type = resource "hetznercloud-network-subnet";
-  #         description = ''
-  #           The ID of a Subnet which contains this Hetzner Cloud instance.
-  #         '';
-  #       };
-  #       privateIP = mkOption {
-  #         example = "10.1.0.2";
-  #         type = types.str;
-  #         description = ''
-  #           The Hetzner Cloud instance's private IP address on this Subnet.
-  #         '';
-  #       };
-  #       aliasIPs = mkOption {
-  #         default = [];
-  #         example = [ "10.1.0.3" "10.1.0.4" "10.1.0.100"];
-  #         type = with types; listOf str;
-  #         description = ''
-  #           The Hetzner Cloud instance's alias IP addresses on this Subnet.
-  #         '';
-  #       };
-  #     };
-  #     config = { };
-  #   };
+  hetznerCloudServerNetworkOptions =
+    { config, ... }:
+    {
+      options = {
+        network = mkOption {
+          example = literalExample "resources.hetznerCloudNetworks.privNet";
+          type = resource "hetznercloud-network";
+          apply = x: "nixops-${uuid}-${x._name}";
+          description = ''
+            A Network Resource which this Hetzner Cloud instance should become reachable on.
+          '';
+        };
+        privateIP = mkOption {
+          example = "10.1.0.2";
+          type = types.str;
+          description = ''
+            The Hetzner Cloud instance's private IP address for this network.
+          '';
+        };
+        aliasIPs = mkOption {
+          default = [];
+          example = [ "10.1.0.3" "10.1.0.4" "10.1.0.100" ];
+          type = with types; listOf str;
+          description = ''
+            The Hetzner Cloud instance's alias IP addresses for this network.
+          '';
+        };
+      };
+    };
 
   hetznerCloudDiskOptions =
     { config, ... }:
     {
-    
+
       imports = [ ./common-volume-options.nix ];
       
       options = {
         
         volume = mkOption {
           default = "";
-          example = "volume1";
+          example = literalExample "resources.hetznerCloudVolumes.volume1";
           type = with types; either str (resource "hetznercloud-volume");
           apply = x: if builtins.isString x then x else "nixops-" + uuid + "-" + x._name;
           description = ''
@@ -65,23 +65,11 @@ let
         };
 
         mountPoint = mkOption {
-          type = types.str;
+          type = with types; str;
           description = "The mountpoint for this volume.";
         };
 
-        deleteOnTermination = mkOption {
-          type = types.bool;
-          description = ''
-            For automatically created Hetzner Cloud volumes, determines whether the
-            volume should be deleted on instance termination.
-          '';
-        };
       };
-      
-      config = {
-        deleteOnTermination = mkDefault (config.volume == "");
-      };
-      
     };
 
   fileSystemsOptions =
@@ -153,19 +141,21 @@ in
       '';
     };    
 
-    # deployment.hetznerCloud.serverNetworks = mkOption {
-    #   default = [];
-    #   type = types.listOf (types.submodule hetznerCloudServerNetworkOptions);
-    # };
+    deployment.hetznerCloud.serverNetworks = mkOption {
+      default = [];
+      example = [];  # TODO
+      type = with types; listOf (submodule hetznerCloudServerNetworkOptions);
+    };
 
-    # deployment.hetznerCloud.ipAddress = mkOption {
-    #   default = null;
-    #   example = "resources.hetznerCloudFloatingIPs.exampleIP";
-    #   type = types.nullOr (resource "hetznercloud-floating-ip");
-    #   description = ''
-    #     Hetzner Cloud Floating IP address resource to bind to.
-    #   '';
-    # };
+    deployment.hetznerCloud.ipAddresses = mkOption {
+      default = [];
+      example = "[resources.hetznerCloudFloatingIPs.fip1]";
+      type = with types; listOf (either str (resource "hetznercloud-floating-ip"));
+      apply = map (x: if builtins.isString x then x else "nixops-" + uuid + "-" + x._name);
+      description = ''
+        Hetzner Cloud Floating IP address resources to bind to.
+      '';
+    };
     
     deployment.hetznerCloud.labels = commonHetznerCloudOptions.labels;
 
@@ -177,14 +167,23 @@ in
 
   ##### implementation
   config = mkIf (config.deployment.targetEnv == "hetznercloud") {
+    
+    assertions = [
+      { assertion = 3 >= length config.deployment.hetznerCloud.serverNetworks;
+        message = "Hetzner Cloud Servers can only attach to up to three networks at once.";
+      }
+    ];
+    
     nixpkgs.system = mkOverride 900 "x86_64-linux";
     services.openssh.enable = true;
 
+    # note: this doesn't duplicate resource definition into the server definition eg size.
     deployment.hetznerCloud.volumes = mkFixStrictness
       (map
         (fs: {
           inherit (fs) mountPoint;
-          inherit (fs.hetznerCloud) volume size fsType deleteOnTermination;
+          inherit (fs.hetznerCloud) volume size;
+          fsType = if fs.fsType != "auto" then fs.fsType else fs.hetznerCloud.fsType;
         })
         (filter (fs: fs.hetznerCloud != null) (attrValues config.fileSystems)));
   };

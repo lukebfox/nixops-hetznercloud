@@ -13,18 +13,18 @@ with lib;
     size = mkOption {
       default = 10;
       example = 50;
-      type = types.int;
+      type = with types; nullOr int;
       description = ''
         Size of the volume in GB. Standard limits are between 10GB and
         1024GB. It is possible to increase the upper limit to 10240GB
-        on request. 
+        on request.
       '';
     };
    
     fsType = mkOption {
       default = "ext4";
       example = "xfs";
-      type = types.enum ["ext4" "xfs"];
+      type = with types; nullOr (enum ["ext4" "xfs"]);
       description = ''
         The filesystem format for this volume.
         Choices are 'ext4' or 'xfs'.

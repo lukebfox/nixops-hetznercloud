@@ -12,7 +12,7 @@ from hcloud.actions.client import BoundAction
 from nixops.util import attr_property
 from nixops.resources import ResourceState, DiffEngineResourceState
 
-from typing import Dict
+from typing import Dict, Any, Optional
 
 
 class HetznerCloudResourceState(DiffEngineResourceState):
@@ -20,6 +20,7 @@ class HetznerCloudResourceState(DiffEngineResourceState):
     COMMON_HCLOUD_RESERVED = ["apiToken"]
 
     _resource_type: str
+#    _client: Optional[Client]
 
     state = attr_property("state", ResourceState.MISSING, int)
     api_token = attr_property("apiToken", None)
@@ -49,7 +50,11 @@ class HetznerCloudResourceState(DiffEngineResourceState):
     def get_default_name_label(self) -> str:
         return "{0} [{1}]".format(self.depl.description, self.name)
 
-    def get_instance(self):
+    @property
+    def full_name(self) -> str:
+        raise NotImplementedError
+
+    def get_instance(self) -> Any:
         try:
             subclient = getattr(self.get_client(), self._resource_type)
             return subclient.get_by_id(self.resource_id)
@@ -64,23 +69,39 @@ class HetznerCloudResourceState(DiffEngineResourceState):
         """
         Generic method to get or create a Hetzner Cloud client.
         """
+        
+        #if self._client:
+        #    return self._client
+
         new_api_token = (
             self.get_defn().apiToken if self.depl.definitions else None  # type: ignore
         ) or os.environ.get("HCLOUD_API_TOKEN")
+
         if new_api_token is not None:
             self.api_token = new_api_token
+
         if self.api_token is None:
             raise Exception("please set ‘apiToken’ or $HCLOUD_API_TOKEN")
+
         if hasattr(self, "_client"):
             if self._client:
                 return self._client
         self._client = Client(token=self.api_token)
         return self._client
 
-    def reset_client(self) -> None:
-        self._client = None
+    def realise_modify_labels(self, allow_recreate: bool) -> None:
+        config = self.get_defn()
+        self.logger.log("updating labels for {0}".format(self.full_name))
 
-    def wait_for_resource_available(self, resource_id: str, resource_type="") -> None:
+        self.get_instance().update(
+            labels={**self.get_common_labels(), **dict(config.labels)}
+        )
+        with self.depl._db:
+            self._state["labels"] = dict(config.labels)
+
+    def wait_for_resource_available(
+        self, resource_id: str, resource_type: str = ""
+    ) -> None:
         if resource_type == "":
             resource_type = self._resource_type
         while True:
@@ -101,3 +122,12 @@ class HetznerCloudResourceState(DiffEngineResourceState):
             self.logger.log_continue("{0}: {1}%\r".format(message, action.progress))
             time.sleep(1)
             action = self.get_client().actions.get_by_id(action.id)
+
+    def wait_on_action(self, action: BoundAction) -> None:
+        while action.status == "running":
+            self.logger.log_continue(".")
+            time.sleep(1)
+            action = self.get_client().actions.get_by_id(action.id)
+        self.logger.log_end("")
+        if action.status != "success":
+            raise Exception("unexpected status: {0}".format(action.status))

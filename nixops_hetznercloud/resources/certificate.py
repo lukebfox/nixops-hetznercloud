@@ -8,6 +8,8 @@ from nixops.diff import Handler
 from nixops.resources import ResourceDefinition
 from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
 
+from typing import Any, Dict, Sequence
+
 from .types.certificate import CertificateOptions
 
 
@@ -48,9 +50,15 @@ class CertificateState(HetznerCloudResourceState):
         HetznerCloudResourceState.__init__(self, depl, name, id)
         self.certificate_id = self.resource_id
         self.handle_create_certificate = Handler(
-            ["certificate", "privateKey", "labels"],
+            ["certificate", "privateKey"],
             handle=self.realise_create_certificate,
         )
+        self.handle_modify_labels = Handler(
+            ["labels"],
+            after=[self.handle_create_certificate],
+            handle=super().realise_modify_labels,
+        )
+        
 
     def show_type(self):
         s = super(CertificateState, self).show_type()
@@ -61,19 +69,19 @@ class CertificateState(HetznerCloudResourceState):
         return self._state.get("certificateId", None)
 
     @property
-    def full_name(self):
+    def full_name(self) -> str:
         return "Hetzner Cloud Certificate {0} [{1}]".format(self.resource_id, self.name)
 
-    def prefix_definition(self, attr):
+    def prefix_definition(self, attr: Any) -> Dict[Sequence[str], Any]:
         return {("resources", "hetznerCloudCertificates"): attr}
 
-    def get_physical_spec(self):
+    def get_physical_spec(self) -> Dict[str, Any]:
         return {"certificateId": self.resource_id}
 
-    def get_definition_prefix(self):
+    def get_definition_prefix(self) -> str:
         return "resources.hetznerCloudCertificates."
 
-    def cleanup_state(self):
+    def cleanup_state(self) -> None:
         with self.depl._db:
             self.state = self.MISSING
             self._state["certificateId"] = None
@@ -81,7 +89,7 @@ class CertificateState(HetznerCloudResourceState):
             self._state["privateKey"] = None
             self._state["labels"] = None
 
-    def _check(self):
+    def _check(self) -> None:
         if self.resource_id is None:
             pass
         elif self.get_instance() is None:
@@ -90,14 +98,14 @@ class CertificateState(HetznerCloudResourceState):
         elif self.state == self.STARTING:
             self.wait_for_resource_available(self.resource_id)
 
-    def _destroy(self):
+    def _destroy(self) -> None:
         instance = self.get_instance()
         if instance is not None:
             self.logger.log("destroying {0}...".format(self.full_name))
             instance.delete()
         self.cleanup_state()
 
-    def realise_create_certificate(self, allow_recreate):
+    def realise_create_certificate(self, allow_recreate: bool) -> None:
         """
         Handle both create and recreate of the certificate resource.
         """
@@ -121,7 +129,6 @@ class CertificateState(HetznerCloudResourceState):
                 name=name,
                 certificate=config.certificate,
                 private_key=config.privateKey,
-                labels={**self.get_common_labels(), **dict(config.labels)},
             )
             self.certificate_id = bound_certificate.id
         except APIException as e:
@@ -137,10 +144,9 @@ class CertificateState(HetznerCloudResourceState):
             self._state["certificateId"] = self.certificate_id
             self._state["certificate"] = config.certificate
             self._state["privateKey"] = config.privateKey
-            self._state["labels"] = dict(config.labels)
 
         self.wait_for_resource_available(self.certificate_id)
 
-    def destroy(self, wipe=False):
+    def destroy(self, wipe: bool = False) -> bool:
         self._destroy()
         return True

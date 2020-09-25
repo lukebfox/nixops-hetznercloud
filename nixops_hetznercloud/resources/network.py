@@ -2,16 +2,14 @@
 
 # Automatic provisioning of Hetzner Cloud Networks.
 
-import json
-
 from hcloud import APIException
 from hcloud.networks.domain import NetworkSubnet, NetworkRoute
 
-from nixops.util import ImmutableMapping
 from nixops.diff import Handler
 from nixops.resources import ResourceDefinition
 from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
 
+from typing import Any, Dict, Sequence, Tuple
 
 from .types.network import NetworkOptions, RouteOptions
 
@@ -27,41 +25,13 @@ class NetworkDefinition(ResourceDefinition):
     def get_type(cls):
         return "hetznercloud-network"
 
-    # def __init__(self, name, config):
-    #     super().__init__(name,config)
-        
-    #     def parse_route(x: RouteOptions):
-    #         result = {}
-    #         result["gateway"] = x.gateway
-    #         result["destination"] = x.destination
-    #         # sanity check
-    #         return result
-
-#        a=self.config.routes
-#        print(a)
-#        print(type(a[0]))
- 
-#        b=[parse_route(r) for r in self.config.routes] 
-#        print(b)
-#        print(type(b[0]))
-        
-#        c=[tuple(r.values()) for r in b]
-#        print(c)
-#        print(type(c[0]))
-        
-#        print(type(self.config.routes[0]), type(config.routes[0]))
-#        print(type(a[0]),type(c[0]))
-#        print(b==c)
-#        print(b[0]==c[0])
-#        print(b[0]["gateway"]==c[0]["gateway"])
-
-
     @classmethod
     def get_resource_type(cls):
         return "hetznerCloudNetworks"
 
     def show_type(self):
         return "{0}".format(self.get_type())
+
 
 class NetworkState(HetznerCloudResourceState):
     """
@@ -94,7 +64,7 @@ class NetworkState(HetznerCloudResourceState):
         self.handle_modify_labels = Handler(
             ["labels"],
             after=[self.handle_modify_subnets, self.handle_modify_routes],
-            handle=self.realise_modify_labels,
+            handle=super().realise_modify_labels,
         )
 
     def show_type(self):
@@ -106,24 +76,19 @@ class NetworkState(HetznerCloudResourceState):
         return self._state.get("networkId", None)
 
     @property
-    def full_name(self):
-        return "Hetzner Cloud Network {0}".format(
-            self.resource_id
-        )
+    def full_name(self) -> str:
+        return "Hetzner Cloud Network {0}".format(self.resource_id)
 
-    def prefix_definition(self, attr):
+    def prefix_definition(self, attr: Any) -> Dict[Sequence[str], Any]:
         return {("resources", "hetznerCloudNetworks"): attr}
 
-    def get_definition_prefix(self):
+    def get_definition_prefix(self) -> str:
         return "resources.hetznerCloudNetworks."
 
-    def get_physical_spec(self):
-        return {
-            "networkId": self.resource_id,
-            "ipRange": self._state.get("ipRange", None),
-        }
+    def get_physical_spec(self) -> Dict[Sequence[str], Any]:
+        return {"networkId": self.resource_id}
 
-    def cleanup_state(self):
+    def cleanup_state(self) -> None:
         with self.depl._db:
             self.state = self.MISSING
             self._state["networkId"] = None
@@ -132,7 +97,7 @@ class NetworkState(HetznerCloudResourceState):
             self._state["routes"] = None
             self._state["labels"] = None
 
-    def _check(self):
+    def _check(self) -> None:
         if self.resource_id is None:
             pass
         elif self.get_instance() is None:
@@ -141,14 +106,14 @@ class NetworkState(HetznerCloudResourceState):
         elif self.state == self.STARTING:
             self.wait_for_resource_available(self.resource_id)
 
-    def _destroy(self):
+    def _destroy(self) -> None:
         instance = self.get_instance()
         if instance is not None:
             self.logger.log("destroying {0}...".format(self.full_name))
             instance.delete()
         self.cleanup_state()
 
-    def realise_create_network(self, allow_recreate):
+    def realise_create_network(self, allow_recreate: bool) -> None:
         config = self.get_defn()
         name = self.get_default_name()
 
@@ -164,18 +129,11 @@ class NetworkState(HetznerCloudResourceState):
             self._destroy()
             self._client = None
 
-        self.log("creating virtual network '{0}'...".format(name))
-        try:
-            self.network_id = (
-                self.get_client().networks.create(name=name, ip_range=config.ipRange).id
-            )
-        except APIException as e:
-            if e.code == "invalid_input":
-                raise Exception(
-                    "couldn't create Network Resource due to {0}".format(e.message)
-                )
-            else:
-                raise e
+        self.log_start("creating virtual network '{0}'...".format(name))
+        self.network_id = self.get_client().networks.create(
+            name=name,
+            ip_range=config.ipRange
+        ).id
 
         with self.depl._db:
             self.state = self.STARTING
@@ -184,99 +142,46 @@ class NetworkState(HetznerCloudResourceState):
 
         self.wait_for_resource_available(self.network_id)
 
-#    def parse_route(self, routes: x: RouteOptions):
-#        result = dict(x)
-#        result][
-        
-
-    def realise_modify_subnets(self, allow_recreate):
+    def realise_modify_subnets(self, allow_recreate: bool) -> None:
         config = self.get_defn()
-        self.logger.log("updating subnets for {0}...".format(self.full_name))
 
         prev_subnets = set(self._state.get("subnets", []))
         final_subnets = set(config.subnets)
 
-        def delete(ip_range: str):
+        for ip_range in prev_subnets - final_subnets:
             subnet = NetworkSubnet(ip_range, "cloud", "eu-central")
-            action = self.get_instance().delete_subnet(subnet)
-            self.wait_with_progress(action, "deleting subnet {0}".format(ip_range))
+            self.logger.log("deleting subnet {0}".format(ip_range))
+            self.wait_on_action(self.get_instance().delete_subnet(subnet))
 
-        subnets_to_delete = list(prev_subnets - final_subnets)
-        if subnets_to_delete:
-            self.logger.log_start("deleting subnets...")
-            list(map(delete, subnets_to_delete))
-            self.logger.log_end("")
-
-        def add(ip_range: str):
+        for ip_range in final_subnets - prev_subnets:
             subnet = NetworkSubnet(ip_range, "cloud", "eu-central")
-            action = self.get_instance().add_subnet(subnet)
-            self.wait_with_progress(action, "adding subnet {0}".format(ip_range))
-
-        subnets_to_add = list(final_subnets - prev_subnets)
-        if subnets_to_add:
-            self.logger.log_start("adding subnets...")
-            list(map(add, subnets_to_add))
-            self.logger.log_end("")
+            self.logger.log("adding subnet {0}".format(ip_range))
+            self.wait_on_action(self.get_instance().add_subnet(subnet))
 
         with self.depl._db:
             self._state["subnets"] = list(final_subnets)
 
-    def realise_modify_routes(self, allow_recreate):
+    def realise_modify_routes(self, allow_recreate: bool) -> None:
         config = self.get_defn()
-        self.logger.log("updating routes for {0}...".format(self.full_name))
 
-        # route definition :: List[RouteOptions] and are stored as dicts
-        # but for the purposes of fast diffing lists of RouteOptions
+        def hashable(x: RouteOptions) -> Tuple[str,str]:
+            return x.destination, x.gateway
 
-        def parse_route(r: RouteOptions):
-            result = {}
-            result["destination"]=r.destination
-            result["gateway"]=r.gateway
-            # return result
-            return frozenset(result.items())
-        
-        prev_routes = {frozenset(x.items()) for x in self._state.get("routes", [])}
-        final_routes = {parse_route(x) for x in config.routes}
+        instance = self.get_instance()
+        prev_routes = set(map(tuple, self._state.get("routes", [])))
+        final_routes = set(map(hashable, config.routes))
 
-        def delete(route):
-            r = NetworkRoute.from_dict(dict(route))
-            self.wait_with_progress(
-                self.get_instance().delete_route(r),
-                "deleting route for {0}".format(r.destination)
-            )
+        for d1, g1 in prev_routes - final_routes:
+            self.logger.log("deleting route for {0}".format(d1))
+            self.wait_on_action(instance.delete_route(NetworkRoute(d1, g1)))
 
-        routes_to_delete = list(prev_routes - final_routes)
-        if routes_to_delete:
-            self.logger.log_start("deleting routes...")
-            list(map(delete, routes_to_delete))
-            self.logger.log_end("")
-
-        def add(route):
-            r = NetworkRoute.from_dict(dict(route))
-            self.wait_with_progress(
-                self.get_instance().add_route(r),
-                "adding route for {0}".format(r.destination)
-            )
-
-        routes_to_add = list(final_routes - prev_routes)
-        if routes_to_add:
-            self.logger.log_start("adding routes...")
-            list(map(add, routes_to_add))
-            self.logger.log_end("")
+        for d2, g2 in final_routes - prev_routes:
+            self.logger.log("adding route for {0}".format(d2))
+            self.wait_on_action(instance.add_route(NetworkRoute(d2, g2)))
 
         with self.depl._db:
-            self._state["routes"] = list(map(dict,final_routes))
+            self._state["routes"] = list(final_routes)
 
-    def realise_modify_labels(self, allow_recreate):
-        config = self.get_defn()
-        self.logger.log("updating labels for {0}".format(self.full_name))
-
-        self.get_instance().update(
-            labels={**self.get_common_labels(), **dict(config.labels)}
-        )
-        with self.depl._db:
-            self._state["labels"] = dict(config.labels)
-
-    def destroy(self, wipe=False):
+    def destroy(self, wipe: bool = False) -> bool:
         self._destroy()
         return True

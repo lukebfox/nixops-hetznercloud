@@ -2,11 +2,15 @@
 
 # Automatic provisioning of Hetzner Cloud Volumes.
 
+from hcloud import APIException
 from hcloud.actions.domain import ActionFailedException, ActionTimeoutException
 
+from nixops.util import attr_property
 from nixops.diff import Handler
 from nixops.resources import ResourceDefinition
 from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
+
+from typing import Any, Dict, Sequence
 
 from .types.volume import VolumeOptions
 
@@ -36,7 +40,12 @@ class VolumeState(HetznerCloudResourceState):
     """
 
     _resource_type = "volumes"
-    _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + ["volumeId"]
+    _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + [
+        "volumeId",
+        "needsFSResize",
+    ]
+
+    needsFSResize = attr_property("needsFSResize", None, bool)
 
     @classmethod
     def get_type(cls):
@@ -53,10 +62,10 @@ class VolumeState(HetznerCloudResourceState):
             after=[self.handle_create_volume],
             handle=self.realise_resize_volume,
         )
-        self.handle_modify_volume_labels = Handler(
+        self.handle_modify_labels = Handler(
             ["labels"],
             after=[self.handle_resize_volume],
-            handle=self.realise_modify_volume_labels,
+            handle=super().realise_modify_labels,
         )
 
     def show_type(self):
@@ -72,30 +81,31 @@ class VolumeState(HetznerCloudResourceState):
         return self._state.get("volumeId", None)
 
     @property
-    def full_name(self):
+    def full_name(self) -> str:
         return "Hetzner Cloud Volume {0} [{1}]".format(
             self.resource_id, self._state.get("location", None)
         )
 
-    def prefix_definition(self, attr):
+    def prefix_definition(self, attr: Any) -> Dict[Sequence[str], Any]:
         return {("resources", "hetznerCloudVolumes"): attr}
 
-    def get_definition_prefix(self):
+    def get_definition_prefix(self) -> str:
         return "resources.hetznerCloudVolumes."
 
-    def get_physical_spec(self):
+    def get_physical_spec(self) -> Dict[str, Any]:
         return {"volumeId": self.resource_id}
 
-    def cleanup_state(self):
+    def cleanup_state(self) -> None:
         with self.depl._db:
             self.state = self.MISSING
+            self.needsFSResize = None
             self._state["volumeId"] = None
             self._state["location"] = None
             self._state["size"] = None
             self._state["fsType"] = None
             self._state["labels"] = None
 
-    def _check(self):
+    def _check(self) -> None:
         if self.resource_id is None:
             pass
         elif self.get_instance() is None:
@@ -104,16 +114,25 @@ class VolumeState(HetznerCloudResourceState):
         elif self.state == self.STARTING:
             self.wait_for_resource_available(self.resource_id)
 
-    def _destroy(self):
+    def _destroy(self) -> None:
         instance = self.get_instance()
         if instance is not None:
-            self.logger.log("detaching {0}...".format(self.full_name))
-            instance.detach().wait_until_finished()
-            self.logger.log("destroying {0}...".format(self.full_name))
-            instance.delete()
+            if instance.server is not None:
+                try:
+                    self.logger.log("detaching {0}...".format(self.full_name))
+                    instance.detach().wait_until_finished()
+                except APIException as e:
+                    print(e.code)
+                    raise
+            try:
+                self.logger.log("destroying {0}...".format(self.full_name))
+                instance.delete()
+            except APIException as e:
+                print(e.code)
+                raise
         self.cleanup_state()
 
-    def realise_create_volume(self, allow_recreate):
+    def realise_create_volume(self, allow_recreate: bool) -> None:
         config = self.get_defn()
 
         if self.state == self.UP:
@@ -165,9 +184,11 @@ class VolumeState(HetznerCloudResourceState):
 
         self.wait_for_resource_available(self.volume_id)
 
-    def realise_resize_volume(self, allow_recreate):
+    def realise_resize_volume(self, allow_recreate: bool) -> None:
         config = self.get_defn()
         size = self._state["size"]
+        if size == config.size:
+            print("handlers trigger later handlers###########")
         if size > config.size:
             raise Exception("decreasing a volume's size isn't supported.")
         elif size < config.size:
@@ -181,18 +202,8 @@ class VolumeState(HetznerCloudResourceState):
 
             with self.depl._db:
                 self._state["size"] = config.size
+                self.needsFSResize = True
 
-    def realise_modify_volume_labels(self, allow_recreate):
-        config = self.get_defn()
-
-        self.logger.log("updating volume labels")
-        self.get_instance().update(
-            labels={**self.get_common_labels(), **dict(config.labels)}
-        )
-
-        with self.depl._db:
-            self._state["labels"] = dict(config.labels)
-
-    def destroy(self, wipe=False):
+    def destroy(self, wipe: bool = False) -> bool:
         self._destroy()
         return True

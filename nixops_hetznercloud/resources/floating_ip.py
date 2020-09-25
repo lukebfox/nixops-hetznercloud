@@ -8,6 +8,8 @@ from nixops.diff import Handler
 from nixops.resources import ResourceDefinition
 from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
 
+from typing import Any, Dict, Sequence
+
 from .types.floating_ip import FloatingIPOptions
 
 
@@ -51,10 +53,15 @@ class FloatingIPState(HetznerCloudResourceState):
         self.handle_create_floating_ip = Handler(
             ["location", "type"], handle=self.realise_create_floating_ip,
         )
-        self.handle_modify_floating_ip_attrs = Handler(
-            ["description", "labels"],
+        self.handle_modify_description = Handler(
+            ["description"],
             after=[self.handle_create_floating_ip],
-            handle=self.realise_modify_floating_ip_attrs,
+            handle=self.realise_modify_description,
+        )
+        self.handle_modify_labels = Handler(
+            ["labels"],
+            after=[self.handle_modify_description],
+            handle=super().realise_modify_labels,
         )
 
     def show_type(self):
@@ -69,24 +76,24 @@ class FloatingIPState(HetznerCloudResourceState):
         return self._state.get("floatingIpId", None)
 
     @property
-    def full_name(self):
+    def full_name(self) -> str:
         return "Hetzner Cloud Floating IP {0} [{1}]".format(
             self.resource_id, self._state.get("address", None)
         )
 
-    def prefix_definition(self, attr):
+    def prefix_definition(self, attr: Any) -> Dict[Sequence[str], Any]:
         return {("resources", "hetznerCloudFloatingIPs"): attr}
 
-    def get_definition_prefix(self):
+    def get_definition_prefix(self) -> str:
         return "resources.hetznerCloudFloatingIPs."
 
-    def get_physical_spec(self):
+    def get_physical_spec(self) -> Dict[str, Any]:
         return {
             "floatingIpId": self.resource_id,
             "address": self._state.get("address", None),
         }
 
-    def cleanup_state(self):
+    def cleanup_state(self) -> None:
         with self.depl._db:
             self.state = self.MISSING
             self._state["floatingIpId"] = None
@@ -96,7 +103,7 @@ class FloatingIPState(HetznerCloudResourceState):
             self._state["location"] = None
             self._state["type"] = None
 
-    def _check(self):
+    def _check(self) -> None:
         if self.resource_id is None:
             pass
         elif self.get_instance() is None:
@@ -105,14 +112,14 @@ class FloatingIPState(HetznerCloudResourceState):
         elif self.state == self.STARTING:
             self.wait_for_resource_available(self.resource_id)
 
-    def _destroy(self):
+    def _destroy(self) -> None:
         instance = self.get_instance()
         if instance is not None:
             self.logger.log("destroying {0}...".format(self.full_name))
             instance.delete()
         self.cleanup_state()
 
-    def realise_create_floating_ip(self, allow_recreate):
+    def realise_create_floating_ip(self, allow_recreate: bool) -> None:
         config = self.get_defn()
 
         if self.state == self.UP:
@@ -161,19 +168,13 @@ class FloatingIPState(HetznerCloudResourceState):
 
         self.wait_for_resource_available(self.floating_ip_id)
 
-    def realise_modify_floating_ip_attrs(self, allow_recreate):
+    def realise_modify_description(self, allow_recreate: bool) -> None:
         config = self.get_defn()
-
-        self.logger.log("applying floating IP attribute changes")
-        self.get_instance().update(
-            description=config.description,
-            labels={**self.get_common_labels(), **dict(config.labels)},
-        )
-
+        self.logger.log("updating floating IP description")
+        self.get_instance().update(description=config.description)
         with self.depl._db:
             self._state["description"] = config.description
-            self._state["labels"] = dict(config.labels)
 
-    def destroy(self, wipe=False):
+    def destroy(self, wipe: bool = False) -> bool:
         self._destroy()
         return True

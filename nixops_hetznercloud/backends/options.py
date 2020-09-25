@@ -3,21 +3,20 @@ from nixops.resources import ResourceOptions
 from typing import Mapping
 from typing import Optional
 from typing import Sequence
+from typing import Any
 
 
-# class NetworkOptions(ResourceOptions):
-#     networkId: str
-#     privateIp: str
-#     aliasIps: Optional[Sequence[str]]
+class ServerNetworkOptions(ResourceOptions):
+    network: str
+    privateIP: str
+    aliasIPs: Sequence[str]
 
 
 class DiskOptions(ResourceOptions):
     volume: str
-    mountPoint: Optional[str]
-    # for automatically created resources
     size: int
     fsType: str
-    deleteOnTermination: bool
+    mountPoint: Optional[str]
 
 
 class HetznerCloudOptions(ResourceOptions):
@@ -27,8 +26,8 @@ class HetznerCloudOptions(ResourceOptions):
     serverType: str
     labels: Mapping[str, str]
     volumes: Sequence[DiskOptions]
-    # serverNetworks: Sequence[NetworkOptions]
-    # ipAddress: Optional[str]
+    ipAddresses: Sequence[str]
+    serverNetworks: Sequence[ServerNetworkOptions]
 
 
 class HetznerCloudMachineOptions(MachineOptions):
