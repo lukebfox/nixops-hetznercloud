@@ -1,6 +1,7 @@
 # NixOps Hetzner Cloud Plugin
-
-NixOps is a tool for deploying NixOS machines in a network or cloud. This repo contains the NixOps Hetzner Cloud Plugin.
+  
+NixOps is a tool for deploying NixOS machines to a local network or cloud provider. 
+This repo contains a NixOps Plugin enabling [Hetzner Cloud](https://www.hetzner.com/cloud) deployments.
 
 ## Disclaimer
 This repo is pre-alpha! That means it's a work in progress, and many things may be unfinished or non-functional, therefore definitely NOT meant for production. If like me you're a nix-hobbyist and appreciate the super cheap rates Hetzner provides but have been aching for a way to automate deployments then you're in luck! While you can already provision resources with the [terraform provider](https://github.com/hetznercloud/terraform-provider-hcloud), this will do nothing for automating your NixOS deployment. The alternative, NixOps, is a more integrated solution which has just been waiting for someone to come and write a plugin. My goal is to automate the entire process of provisioning and deploying your NixOS box with one tool. At the moment I'm working on the other resources with an intent to complete all of them.
