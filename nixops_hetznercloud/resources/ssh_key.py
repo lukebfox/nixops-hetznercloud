@@ -84,15 +84,6 @@ class SSHKeyState(HetznerCloudResourceState):
             self._state["publicKey"] = ""  # None
             self._state["labels"] = None
 
-    def _check(self) -> None:
-        if self.resource_id is None:
-            pass
-        elif self.get_instance() is None:
-            self.warn(" it needs to be recreated...")
-            self.cleanup_state()
-        elif self.state == self.STARTING:
-            self.wait_for_resource_available(self.resource_id)
-
     def _destroy(self) -> None:
         if self.state != self.UP:
             return

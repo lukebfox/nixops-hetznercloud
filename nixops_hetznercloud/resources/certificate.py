@@ -36,6 +36,7 @@ class CertificateState(HetznerCloudResourceState):
     """
     State of a Certificate.
     """
+    definition_type = CertificateDefinition
 
     _resource_type = "certificates"
     _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + [
@@ -89,15 +90,6 @@ class CertificateState(HetznerCloudResourceState):
             self._state["privateKey"] = None
             self._state["labels"] = None
 
-    def _check(self) -> None:
-        if self.resource_id is None:
-            pass
-        elif self.get_instance() is None:
-            self.warn(" it needs to be recreated...")
-            self.cleanup_state()
-        elif self.state == self.STARTING:
-            self.wait_for_resource_available(self.resource_id)
-
     def _destroy(self) -> None:
         instance = self.get_instance()
         if instance is not None:
@@ -109,7 +101,7 @@ class CertificateState(HetznerCloudResourceState):
         """
         Handle both create and recreate of the certificate resource.
         """
-        config = self.get_defn()
+        defn: CertificateOptions = self.get_defn().config
         if self.state == self.UP:
             if not allow_recreate:
                 raise Exception(
@@ -127,8 +119,8 @@ class CertificateState(HetznerCloudResourceState):
         try:
             bound_certificate = self.get_client().certificates.create(
                 name=name,
-                certificate=config.certificate,
-                private_key=config.privateKey,
+                certificate=defn.certificate,
+                private_key=defn.privateKey,
             )
             self.certificate_id = bound_certificate.id
         except APIException as e:
@@ -142,8 +134,8 @@ class CertificateState(HetznerCloudResourceState):
         with self.depl._db:
             self.state = self.STARTING
             self._state["certificateId"] = self.certificate_id
-            self._state["certificate"] = config.certificate
-            self._state["privateKey"] = config.privateKey
+            self._state["certificate"] = defn.certificate
+            self._state["privateKey"] = defn.privateKey
 
         self.wait_for_resource_available(self.certificate_id)
 

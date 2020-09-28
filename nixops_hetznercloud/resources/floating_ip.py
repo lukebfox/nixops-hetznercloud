@@ -5,6 +5,7 @@
 from hcloud.actions.domain import ActionFailedException, ActionTimeoutException
 
 from nixops.diff import Handler
+from nixops.util import attr_property
 from nixops.resources import ResourceDefinition
 from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
 
@@ -36,7 +37,10 @@ class FloatingIPState(HetznerCloudResourceState):
     """
     State of a Hetzner Cloud Floating IP.
     """
+    definition_type = FloatingIPDefinition
 
+    floating_ip_id = attr_property("floatingIpId", None)
+    
     _resource_type = "floating_ips"
     _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + [
         "floatingIpId",
@@ -103,15 +107,6 @@ class FloatingIPState(HetznerCloudResourceState):
             self._state["location"] = None
             self._state["type"] = None
 
-    def _check(self) -> None:
-        if self.resource_id is None:
-            pass
-        elif self.get_instance() is None:
-            self.warn(" it needs to be recreated...")
-            self.cleanup_state()
-        elif self.state == self.STARTING:
-            self.wait_for_resource_available(self.resource_id)
-
     def _destroy(self) -> None:
         instance = self.get_instance()
         if instance is not None:
@@ -120,10 +115,10 @@ class FloatingIPState(HetznerCloudResourceState):
         self.cleanup_state()
 
     def realise_create_floating_ip(self, allow_recreate: bool) -> None:
-        config = self.get_defn()
+        defn: FloatingIPDefinition = self.get_defn().config
 
         if self.state == self.UP:
-            if self._state["location"] != config.location:
+            if self._state["location"] != defn.location:
                 raise Exception("changing a floating IP's location isn't supported.")
             if not allow_recreate:
                 raise Exception(
@@ -136,17 +131,17 @@ class FloatingIPState(HetznerCloudResourceState):
             self._destroy()
             self._client = None
 
-        location = self.get_client().locations.get_by_name(config.location)
+        location = self.get_client().locations.get_by_name(defn.location)
 
         self.logger.log("creating floating IP at {0}...".format(location.description))
         try:
             response = self.get_client().floating_ips.create(
-                name=self.get_default_name(), type=config.type, home_location=location,
+                name=self.get_default_name(), type=defn.type, home_location=location,
             )
             if response.action:
                 response.action.wait_until_finished()
             self.floating_ip_id = response.floating_ip.id
-            self.address = response.floating_ip.ip
+            address = response.floating_ip.ip
             self.logger.log("IP address is {0}".format(self.address))
         except ActionFailedException:
             raise Exception(
@@ -162,18 +157,18 @@ class FloatingIPState(HetznerCloudResourceState):
         with self.depl._db:
             self.state = self.STARTING
             self._state["floatingIpId"] = self.floating_ip_id
-            self._state["location"] = config.location
-            self._state["type"] = config.type
-            self._state["address"] = self.address
+            self._state["location"] = defn.location
+            self._state["type"] = defn.type
+            self._state["address"] = address
 
         self.wait_for_resource_available(self.floating_ip_id)
 
     def realise_modify_description(self, allow_recreate: bool) -> None:
-        config = self.get_defn()
+        defn: FloatingIPDefinition = self.get_defn().config
         self.logger.log("updating floating IP description")
-        self.get_instance().update(description=config.description)
+        self.get_instance().update(description=defn.description)
         with self.depl._db:
-            self._state["description"] = config.description
+            self._state["description"] = defn.description
 
     def destroy(self, wipe: bool = False) -> bool:
         self._destroy()

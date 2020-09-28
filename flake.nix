@@ -5,35 +5,24 @@
   inputs.nixops.url = "github:NixOS/nixops/master";
   inputs.utils.url = "github:numtide/flake-utils";
 
-  outputs = { self, nixpkgs,
-              nixops,
-              utils }: utils.lib.eachDefaultSystem (system: let
-    pkgs = import nixpkgs {
+  outputs = inputs: inputs.utils.lib.eachDefaultSystem (system: with inputs.nixpkgs.lib; let
+    pkgs = import inputs.nixpkgs {
       inherit system;
-#      overlays = [ (_:_: { nixops = nixops.defaultPackage.${system}; }) ];
+    #  overlays = [(_:_:{ nixops = inputs.nixops.defaultPackage.${system}; })];
     };
-    
-    overrides = pkgs.poetry2nix.overrides.withDefaults (_:_: {
-      nixops = nixops.defaultPackage.${system};
-    });
-    
-    # overrides = [pkgs.poetry2nix.defaultPoetryOverrides];
 
-    # overrides = pkgs.poetry2nix.overrides.withDefaults (final: prev: {
-    #   nixops = prev.nixops.overridePythonAttrs (
-    #     { nativeBuildInputs ? [], ... }: {
-    #       format = "pyproject";
-    #       nativeBuildInputs = nativeBuildInputs ++ [ final.poetry ];
-    #     }
-    #   );
-    #   nixos-modules-contrib = prev.nixos-modules-contrib.overridePythonAttrs (
-    #     { nativeBuildInputs ? [], ... }: {
-    #       format = "pyproject";
-    #       nativeBuildInputs = nativeBuildInputs ++ [ final.poetry ];
-    #     }
-    #   );
-    # });
-
+   overrides = pkgs.poetry2nix.overrides.withDefaults (final: prev: {
+    nixops = prev.nixops.overridePythonAttrs (
+      { nativeBuildInputs ? [], ... }: {
+        format = "pyproject";
+        nativeBuildInputs = nativeBuildInputs ++ [ final.poetry ];
+      }
+    );
+   });
+    
+   #overrides = pkgs.poetry2nix.overrides.withDefaults (final: prev: {
+   #  nixops = inputs.nixops.defaultPackage.${system};
+   #});
 
   in {
     devShell = pkgs.mkShell {
@@ -41,14 +30,14 @@
         pkgs.poetry
         (pkgs.poetry2nix.mkPoetryEnv {
           inherit overrides;
-          projectDir = toString ./.;
+          projectDir = ./.;
         })
       ];
     };
     
     defaultPackage = pkgs.poetry2nix.mkPoetryApplication {
       inherit overrides;
-      projectDir = toString ./.;
+      projectDir = ./.;
       meta.description = "Nix package for ${system}";
     };
 

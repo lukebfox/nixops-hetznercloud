@@ -1,5 +1,7 @@
-{ apiToken ? "qFYCZtzCGcWVdIaje8fQWSOg4RmTICCwcomcOJJtUJcFm3DjDJ9Nl0kkX2ZyrFnx" }:
-
+let
+  apiToken = "qFYCZtzCGcWVdIaje8fQWSOg4RmTICCwcomcOJJtUJcFm3DjDJ9Nl0kkX2ZyrFnx";
+  location = "nbg1";
+in
 {
   network.description = "Hetzner Cloud network example deployment";
 
@@ -12,6 +14,12 @@
         gateway = "10.3.0.2";
       }
     ];
+  };
+
+  resources.hetznerCloudFloatingIPs.fip1 = {
+    inherit apiToken location;
+    description = "static ip for example.com";
+    type = "ipv4";
   };
 
 }

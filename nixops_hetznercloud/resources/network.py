@@ -5,6 +5,7 @@
 from hcloud import APIException
 from hcloud.networks.domain import NetworkSubnet, NetworkRoute
 
+from nixops.util import attr_property
 from nixops.diff import Handler
 from nixops.resources import ResourceDefinition
 from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
@@ -13,6 +14,8 @@ from typing import Any, Dict, Sequence, Tuple
 
 from .types.network import NetworkOptions, RouteOptions
 
+def hashable(x: RouteOptions) -> Tuple[str,str]:
+    return x.destination, x.gateway
 
 class NetworkDefinition(ResourceDefinition):
     """
@@ -38,6 +41,9 @@ class NetworkState(HetznerCloudResourceState):
     State of a Hetzner Cloud Network.
     """
 
+    definition_type = NetworkDefinition
+#    network_id = attr_property("networkId", None)
+    
     _resource_type = "networks"
     _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + ["networkId"]
 
@@ -47,7 +53,7 @@ class NetworkState(HetznerCloudResourceState):
 
     def __init__(self, depl, name, id):
         super(HetznerCloudResourceState, self).__init__(depl, name, id)
-        self.network_id = self.resource_id
+#        self.network_id = self.resource_id
         self.handle_create_network = Handler(
             ["ipRange"], handle=self.realise_create_network,
         )
@@ -97,14 +103,9 @@ class NetworkState(HetznerCloudResourceState):
             self._state["routes"] = None
             self._state["labels"] = None
 
-    def _check(self) -> None:
-        if self.resource_id is None:
-            pass
-        elif self.get_instance() is None:
-            self.warn(" it needs to be recreated...")
-            self.cleanup_state()
-        elif self.state == self.STARTING:
-            self.wait_for_resource_available(self.resource_id)
+    def warn_changed_attr(self, attr: str, v):
+        self.warn(attr + " attribute was changed manually, updating state")
+        self._state[attr] = v
 
     def _destroy(self) -> None:
         instance = self.get_instance()
@@ -114,7 +115,7 @@ class NetworkState(HetznerCloudResourceState):
         self.cleanup_state()
 
     def realise_create_network(self, allow_recreate: bool) -> None:
-        config = self.get_defn()
+        defn: NetworkOptions = self.get_defn().config
         name = self.get_default_name()
 
         if self.state == self.UP:
@@ -130,23 +131,23 @@ class NetworkState(HetznerCloudResourceState):
             self._client = None
 
         self.log_start("creating virtual network '{0}'...".format(name))
-        self.network_id = self.get_client().networks.create(
+        network_id = self.get_client().networks.create(
             name=name,
-            ip_range=config.ipRange
+            ip_range=defn.ipRange
         ).id
 
         with self.depl._db:
             self.state = self.STARTING
-            self._state["networkId"] = self.network_id
-            self._state["ipRange"] = config.ipRange
+            self._state["networkId"] = network_id
+            self._state["ipRange"] = defn.ipRange
 
-        self.wait_for_resource_available(self.network_id)
+        self.wait_for_resource_available(network_id)
 
     def realise_modify_subnets(self, allow_recreate: bool) -> None:
-        config = self.get_defn()
+        defn: NetworkOptions = self.get_defn().config
 
         prev_subnets = set(self._state.get("subnets", []))
-        final_subnets = set(config.subnets)
+        final_subnets = set(defn.subnets)
 
         for ip_range in prev_subnets - final_subnets:
             subnet = NetworkSubnet(ip_range, "cloud", "eu-central")
@@ -162,21 +163,18 @@ class NetworkState(HetznerCloudResourceState):
             self._state["subnets"] = list(final_subnets)
 
     def realise_modify_routes(self, allow_recreate: bool) -> None:
-        config = self.get_defn()
-
-        def hashable(x: RouteOptions) -> Tuple[str,str]:
-            return x.destination, x.gateway
+        defn: NetworkOptions = self.get_defn().config
 
         instance = self.get_instance()
         prev_routes = set(map(tuple, self._state.get("routes", [])))
-        final_routes = set(map(hashable, config.routes))
+        final_routes = set(map(hashable, defn.routes))
 
         for d1, g1 in prev_routes - final_routes:
-            self.logger.log("deleting route for {0}".format(d1))
+            self.logger.log("deleting route for {0}".format(g1))
             self.wait_on_action(instance.delete_route(NetworkRoute(d1, g1)))
 
         for d2, g2 in final_routes - prev_routes:
-            self.logger.log("adding route for {0}".format(d2))
+            self.logger.log("adding route for {0}".format(g2))
             self.wait_on_action(instance.add_route(NetworkRoute(d2, g2)))
 
         with self.depl._db:

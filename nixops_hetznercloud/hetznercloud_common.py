@@ -12,7 +12,7 @@ from hcloud.actions.client import BoundAction
 from nixops.util import attr_property
 from nixops.resources import ResourceState, DiffEngineResourceState
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional    
 
 
 class HetznerCloudResourceState(DiffEngineResourceState):
@@ -60,7 +60,6 @@ class HetznerCloudResourceState(DiffEngineResourceState):
             return subclient.get_by_id(self.resource_id)
         except APIException as e:
             if e.code == "not_found":
-                self.warn("{0} was deleted from outside nixops".format(self.full_name))
                 return None
             else:
                 raise
@@ -74,7 +73,7 @@ class HetznerCloudResourceState(DiffEngineResourceState):
         #    return self._client
 
         new_api_token = (
-            self.get_defn().apiToken if self.depl.definitions else None  # type: ignore
+            self.get_defn().config.apiToken if self.depl.definitions else None  # type: ignore
         ) or os.environ.get("HCLOUD_API_TOKEN")
 
         if new_api_token is not None:
@@ -90,14 +89,14 @@ class HetznerCloudResourceState(DiffEngineResourceState):
         return self._client
 
     def realise_modify_labels(self, allow_recreate: bool) -> None:
-        config = self.get_defn()
+        defn = self.get_defn().config
         self.logger.log("updating labels for {0}".format(self.full_name))
 
         self.get_instance().update(
-            labels={**self.get_common_labels(), **dict(config.labels)}
+            labels={**self.get_common_labels(), **dict(defn.labels)}
         )
         with self.depl._db:
-            self._state["labels"] = dict(config.labels)
+            self._state["labels"] = dict(defn.labels)
 
     def wait_for_resource_available(
         self, resource_id: str, resource_type: str = ""
@@ -116,6 +115,16 @@ class HetznerCloudResourceState(DiffEngineResourceState):
 
         with self.depl._db:
             self.state = self.UP
+
+    def _check(self) -> None:
+        if self.resource_id is None:
+            return
+        instance = self.get_instance()
+        if instance is None:
+            self.warn("{0} was deleted from outside nixops; it needs to be recreated...")
+            self.cleanup_state()
+        elif self.state == self.STARTING:
+            self.wait_for_resource_available(self.resource_id)
 
     def wait_with_progress(self, action: BoundAction, message: str) -> None:
         while action and action.progress < 100:

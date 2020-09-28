@@ -6,11 +6,11 @@
         "utils": "utils"
       },
       "locked": {
-        "lastModified": 1597398647,
-        "narHash": "sha256-7BJ78rmJtcgIyJvBVj9BnXUPFTaB8Y0CofAfFATHlzQ=",
+        "lastModified": 1600782620,
+        "narHash": "sha256-6n1fEyBuA8ccMxdCudhVkGPY6p69h2Tvx/DzttzrmF8=",
         "owner": "NixOS",
         "repo": "nixops",
-        "rev": "6bed6e782e26c95da93ce04596b60b74d712f9fa",
+        "rev": "6fc9ca59a93907aef9fbf74a4815c01282b535c5",
         "type": "github"
       },
       "original": {

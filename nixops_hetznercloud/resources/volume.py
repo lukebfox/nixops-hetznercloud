@@ -105,15 +105,6 @@ class VolumeState(HetznerCloudResourceState):
             self._state["fsType"] = None
             self._state["labels"] = None
 
-    def _check(self) -> None:
-        if self.resource_id is None:
-            pass
-        elif self.get_instance() is None:
-            self.warn(" it needs to be recreated...")
-            self.cleanup_state()
-        elif self.state == self.STARTING:
-            self.wait_for_resource_available(self.resource_id)
-
     def _destroy(self) -> None:
         instance = self.get_instance()
         if instance is not None:
@@ -133,12 +124,12 @@ class VolumeState(HetznerCloudResourceState):
         self.cleanup_state()
 
     def realise_create_volume(self, allow_recreate: bool) -> None:
-        config = self.get_defn()
+        defn: VolumeOptions = self.get_defn().config
 
         if self.state == self.UP:
-            if self._state["location"] != config.location:
+            if self._state["location"] != defn.location:
                 raise Exception("changing a volume's location isn't supported.")
-            if self._state["fsType"] != config.fsType:
+            if self._state["fsType"] != defn.fsType:
                 raise Exception("reformatting a volume isn't supported.")
             if not allow_recreate:
                 raise Exception(
@@ -151,15 +142,15 @@ class VolumeState(HetznerCloudResourceState):
             self._destroy()
             self._client = None
 
-        location = self.get_client().locations.get_by_name(config.location)
+        location = self.get_client().locations.get_by_name(defn.location)
         name = self.get_default_name()
 
         self.logger.log(
-            "creating {0}GB volume at {1}...".format(config.size, location.description)
+            "creating {0}GB volume at {1}...".format(defn.size, defn.description)
         )
         try:
             response = self.get_client().volumes.create(
-                location=location, name=name, size=config.size, format=config.fsType,
+                location=location, name=name, size=defn.size, format=defn.fsType,
             )
             if response.action:
                 response.action.wait_until_finished()
@@ -178,30 +169,28 @@ class VolumeState(HetznerCloudResourceState):
         with self.depl._db:
             self.state = self.STARTING
             self._state["volumeId"] = self.volume_id
-            self._state["location"] = config.location
-            self._state["size"] = config.size
-            self._state["fsType"] = config.fsType
+            self._state["location"] = defn.location
+            self._state["size"] = defn.size
+            self._state["fsType"] = defn.fsType
 
         self.wait_for_resource_available(self.volume_id)
 
     def realise_resize_volume(self, allow_recreate: bool) -> None:
-        config = self.get_defn()
+        defn: VolumeOptions = self.get_defn().config
         size = self._state["size"]
-        if size == config.size:
-            print("handlers trigger later handlers###########")
-        if size > config.size:
+        if size > defn.size:
             raise Exception("decreasing a volume's size isn't supported.")
-        elif size < config.size:
+        elif size < defn.size:
             self.logger.log(
                 "increasing volume size from {0} GiB to {1} GiB".format(
-                    size, config.size
+                    size, defn.size
                 )
             )
 
-            self.get_instance().resize(config.size).wait_until_finished()
+            self.get_instance().resize(defn.size).wait_until_finished()
 
             with self.depl._db:
-                self._state["size"] = config.size
+                self._state["size"] = defn.size
                 self.needsFSResize = True
 
     def destroy(self, wipe: bool = False) -> bool:
