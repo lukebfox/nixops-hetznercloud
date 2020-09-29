@@ -38,7 +38,7 @@ from .options import HetznerCloudMachineOptions
 
 
 INFECT_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "data", "nixos-infect")
+    os.path.join(os.path.dirname(__file__), "..", "data", "nixos-infect")
 )
 
 

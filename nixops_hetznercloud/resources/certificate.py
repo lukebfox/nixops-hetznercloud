@@ -5,6 +5,7 @@
 from hcloud import APIException
 
 from nixops.diff import Handler
+from nixops.util import attr_property
 from nixops.resources import ResourceDefinition
 from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
 
@@ -36,7 +37,10 @@ class CertificateState(HetznerCloudResourceState):
     """
     State of a Certificate.
     """
+
     definition_type = CertificateDefinition
+
+    certificate_id = attr_property("certificateId", None)
 
     _resource_type = "certificates"
     _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + [

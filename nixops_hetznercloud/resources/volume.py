@@ -5,8 +5,8 @@
 from hcloud import APIException
 from hcloud.actions.domain import ActionFailedException, ActionTimeoutException
 
-from nixops.util import attr_property
 from nixops.diff import Handler
+from nixops.util import attr_property
 from nixops.resources import ResourceDefinition
 from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
 
@@ -38,6 +38,10 @@ class VolumeState(HetznerCloudResourceState):
     """
     State of a Hetzner Cloud Volume.
     """
+
+    definition_type = VolumeDefinition
+
+    volume_id = attr_property("volumeId", None)
 
     _resource_type = "volumes"
     _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + [
@@ -146,7 +150,7 @@ class VolumeState(HetznerCloudResourceState):
         name = self.get_default_name()
 
         self.logger.log(
-            "creating {0}GB volume at {1}...".format(defn.size, defn.description)
+            "creating {0}GB volume at {1}...".format(defn.size, location.description)
         )
         try:
             response = self.get_client().volumes.create(
@@ -154,7 +158,6 @@ class VolumeState(HetznerCloudResourceState):
             )
             if response.action:
                 response.action.wait_until_finished()
-            self.volume_id = response.volume.id
         except ActionFailedException:
             raise Exception(
                 "Failed to create Hetzner Cloud volume resource "
@@ -168,12 +171,12 @@ class VolumeState(HetznerCloudResourceState):
 
         with self.depl._db:
             self.state = self.STARTING
-            self._state["volumeId"] = self.volume_id
+            self._state["volumeId"] = response.volume.id
             self._state["location"] = defn.location
             self._state["size"] = defn.size
             self._state["fsType"] = defn.fsType
 
-        self.wait_for_resource_available(self.volume_id)
+        self.wait_for_resource_available(self.resource_id)
 
     def realise_resize_volume(self, allow_recreate: bool) -> None:
         defn: VolumeOptions = self.get_defn().config

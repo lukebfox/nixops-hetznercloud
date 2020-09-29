@@ -95,7 +95,7 @@ class SSHKeyState(HetznerCloudResourceState):
         """
         Handle both create and recreate of the ssh key resource.
         """
-        config = self.get_defn()
+        defn: SSHKeyOptions = self.get_defn().config
         name = self.get_default_name()
 
         if self.state == self.UP:
@@ -116,7 +116,7 @@ class SSHKeyState(HetznerCloudResourceState):
                 self.get_client()
                 .ssh_keys.create(
                     name=name,
-                    public_key=config.publicKey,
+                    public_key=defn.publicKey,
                 )
                 .id
             )
@@ -131,7 +131,7 @@ class SSHKeyState(HetznerCloudResourceState):
         with self.depl._db:
             self.state = self.STARTING
             self._state["sshKeyId"] = self.ssh_key_id
-            self._state["publicKey"] = config.publicKey
+            self._state["publicKey"] = defn.publicKey
 
         self.wait_for_resource_available(self.ssh_key_id)
 

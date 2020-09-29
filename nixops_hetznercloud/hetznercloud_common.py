@@ -23,10 +23,12 @@ class HetznerCloudResourceState(DiffEngineResourceState):
 #    _client: Optional[Client]
 
     state = attr_property("state", ResourceState.MISSING, int)
+    resource_id = attr_property("resourceId", None)
     api_token = attr_property("apiToken", None)
 
     def __init__(self, depl, name, id):
         DiffEngineResourceState.__init__(self, depl, name, id)
+        self.resource_id = None
         self._client = None
 
     def get_common_labels(self) -> Dict[str, str]:
@@ -69,8 +71,9 @@ class HetznerCloudResourceState(DiffEngineResourceState):
         Generic method to get or create a Hetzner Cloud client.
         """
         
-        #if self._client:
-        #    return self._client
+        if hasattr(self, "_client"):
+            if self._client:
+                return self._client
 
         new_api_token = (
             self.get_defn().config.apiToken if self.depl.definitions else None  # type: ignore
@@ -80,11 +83,8 @@ class HetznerCloudResourceState(DiffEngineResourceState):
             self.api_token = new_api_token
 
         if self.api_token is None:
-            raise Exception("please set ‘apiToken’ or $HCLOUD_API_TOKEN")
+            raise Exception("please set ‘apiToken’ ors $HCLOUD_API_TOKEN")
 
-        if hasattr(self, "_client"):
-            if self._client:
-                return self._client
         self._client = Client(token=self.api_token)
         return self._client
 

@@ -37,6 +37,7 @@ class FloatingIPState(HetznerCloudResourceState):
     """
     State of a Hetzner Cloud Floating IP.
     """
+
     definition_type = FloatingIPDefinition
 
     floating_ip_id = attr_property("floatingIpId", None)
@@ -115,7 +116,7 @@ class FloatingIPState(HetznerCloudResourceState):
         self.cleanup_state()
 
     def realise_create_floating_ip(self, allow_recreate: bool) -> None:
-        defn: FloatingIPDefinition = self.get_defn().config
+        defn: FloatingIPOptions = self.get_defn().config
 
         if self.state == self.UP:
             if self._state["location"] != defn.location:
@@ -164,7 +165,7 @@ class FloatingIPState(HetznerCloudResourceState):
         self.wait_for_resource_available(self.floating_ip_id)
 
     def realise_modify_description(self, allow_recreate: bool) -> None:
-        defn: FloatingIPDefinition = self.get_defn().config
+        defn: FloatingIPOptions = self.get_defn().config
         self.logger.log("updating floating IP description")
         self.get_instance().update(description=defn.description)
         with self.depl._db:

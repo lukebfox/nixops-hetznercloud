@@ -42,7 +42,8 @@ class NetworkState(HetznerCloudResourceState):
     """
 
     definition_type = NetworkDefinition
-#    network_id = attr_property("networkId", None)
+
+    network_id = attr_property("networkId", None)
     
     _resource_type = "networks"
     _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + ["networkId"]
