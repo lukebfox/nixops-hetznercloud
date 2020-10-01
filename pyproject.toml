@@ -9,8 +9,6 @@ include = [ "nixops_hetznercloud/nix/*.nix" ]
 [tool.poetry.dependencies]
 python = "~3.8"
 hcloud = "1.8.1"
-#nixops = "^2.0"
-#nixops = {path = "../nixops"}
 nixops = {git = "https://github.com/lukebfox/nixops", rev = "master"}
 typing-extensions = "^3.7.4"
 

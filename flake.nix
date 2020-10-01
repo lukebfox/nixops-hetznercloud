@@ -6,9 +6,7 @@
 
   outputs = inputs: inputs.utils.lib.eachDefaultSystem (system: let
 
-    pkgs = import inputs.nixpkgs {
-      inherit system;
-    };
+    pkgs = import inputs.nixpkgs { inherit system; };
 
     overrides = pkgs.poetry2nix.overrides.withDefaults (final: prev: {
       nixops = prev.nixops.overridePythonAttrs (
@@ -18,9 +16,15 @@
         }
       );
     });
-    
+
   in {
     
+    defaultPackage = pkgs.poetry2nix.mkPoetryApplication {
+      inherit overrides;
+      projectDir = ./.;
+      meta.description = "Nix package for ${system}";
+    };
+
     devShell = pkgs.mkShell {
       buildInputs = [
         pkgs.poetry
@@ -31,15 +35,7 @@
       ];
     };
 
-    defaultPackage = pkgs.poetry2nix.mkPoetryApplication {
-      inherit overrides;
-      projectDir = ./.;
-      meta.description = "Nix package for ${system}";
-    };
 
-
-  }) // {
-    overlay = final: prev: { nixops-hetznercloud = inputs.self.defaultPackage; };
-  };
+  });
 
 }
