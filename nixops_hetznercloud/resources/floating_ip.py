@@ -2,8 +2,6 @@
 
 # Automatic provisioning of Hetzner Cloud Floating IPs.
 
-from hcloud.actions.domain import ActionFailedException, ActionTimeoutException
-
 from nixops.diff import Handler
 from nixops.util import attr_property
 from nixops.resources import ResourceDefinition
@@ -130,25 +128,15 @@ class FloatingIPState(HetznerCloudResourceState):
         location = self.get_client().locations.get_by_name(defn.location)
 
         self.logger.log("creating floating IP at {0}...".format(location.description))
-        try:
-            response = self.get_client().floating_ips.create(
-                name=self.get_default_name(), type=defn.type, home_location=location,
-            )
-            if response.action:
-                response.action.wait_until_finished()
-            self.resource_id = response.floating_ip.id
-            self.address = response.floating_ip.ip
-            self.logger.log("IP address is {0}".format(self.address))
-        except ActionFailedException:
-            raise Exception(
-                "Failed to create Hetzner Cloud floating IP resource "
-                "with following error: {0}".format(response.action.error)
-            )
-        except ActionTimeoutException:
-            raise Exception(
-                "failed to create Hetzner Cloud floating IP;"
-                " timeout, maximium retries reached (100)"
-            )
+        response = self.get_client().floating_ips.create(
+            name=self.get_default_name(), type=defn.type, home_location=location,
+        )
+        if response.action:
+            response.action.wait_until_finished()
+
+        self.resource_id = response.floating_ip
+        self.address = response.floating_ip.ip
+        self.logger.log("IP address is {0}".format(self.address))
 
         with self.depl._db:
             self.state = self.STARTING

@@ -2,8 +2,6 @@
 
 # Automatic provisioning of Hetzner Cloud Certificates.
 
-from hcloud import APIException
-
 from nixops.diff import Handler
 from nixops.resources import ResourceDefinition
 from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState

@@ -2,7 +2,6 @@
 
 # Automatic provisioning of Hetzner Cloud Networks.
 
-from hcloud import APIException
 from hcloud.networks.domain import NetworkSubnet, NetworkRoute
 
 from nixops.diff import Handler
