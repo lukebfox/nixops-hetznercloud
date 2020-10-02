@@ -14,4 +14,3 @@ class NetworkOptions(ResourceOptions):
     subnets: Sequence[str]
     routes: Sequence[RouteOptions]
     labels: Mapping[str, str]
-    networkId: str

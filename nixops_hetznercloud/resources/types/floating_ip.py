@@ -8,5 +8,4 @@ class FloatingIPOptions(ResourceOptions):
     type: str
     location: str
     labels: Mapping[str, str]
-    floatingIpId: str
     address: str

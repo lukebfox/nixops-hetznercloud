@@ -48,14 +48,6 @@ with lib;
         };
       });
     };
-
-    networkId = mkOption {
-      default = "";
-      type = types.str;
-      description = ''
-        The Network ID generated from Hetzner Cloud. This is set by NixOps
-      '';
-    };
     
   } // import ./common-hetznercloud-options.nix { inherit lib; };
     

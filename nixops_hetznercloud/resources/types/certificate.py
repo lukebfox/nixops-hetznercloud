@@ -7,4 +7,3 @@ class CertificateOptions(ResourceOptions):
     certificate: str
     privateKey: str
     labels: Mapping[str, str]
-    certificateId: str

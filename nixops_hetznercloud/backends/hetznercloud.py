@@ -23,7 +23,7 @@ from hcloud.volumes.client import BoundVolume
 from nixops import known_hosts
 from nixops.backends import MachineDefinition, MachineState
 from nixops.deployment import Deployment
-from nixops.nix_expr import RawValue, MultiLineRawValue
+from nixops.nix_expr import RawValue
 from nixops.resources import ResourceEval
 from nixops.util import attr_property, create_key_pair, check_wait
 
@@ -62,17 +62,10 @@ class HetznerCloudDefinition(MachineDefinition):
         self.server_name = self.config.hetznerCloud.serverName
         self.server_type = self.config.hetznerCloud.serverType
         self.server_networks = {
-            x.network: dict(x)
-            for x in self.config.hetznerCloud.serverNetworks
+            x.network: dict(x) for x in self.config.hetznerCloud.serverNetworks
         }
-        self.volumes = {
-            x.volume: dict(x)
-            for x in self.config.hetznerCloud.volumes
-        }
-        self.ip_addresses = {
-            x: None
-            for x in self.config.hetznerCloud.ipAddresses
-        }
+        self.volumes = {x.volume: dict(x) for x in self.config.hetznerCloud.volumes}
+        self.ip_addresses = {x: None for x in self.config.hetznerCloud.ipAddresses}
 
     def show_type(self):
         return "{0} [{1}]".format(self.get_type(), self.location or "???")
@@ -109,7 +102,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         MachineState.__init__(self, depl, name, id)
         self._client = None
 
-    def cleanup_state(self):
+    def cleanup_state(self) -> None:
         """ Discard all state pertaining to an instance. """
         with self.depl._db:
             self.vm_id = None
@@ -142,11 +135,12 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             return self.get_client().servers.get_by_id(self.vm_id)
         except APIException as e:
             if e.code == "not_found":
-                self.warn(
+                self.logger.warn(
                     "{0} was deleted from outside of nixops".format(self.full_name)
                 )
                 return None
-            else: raise
+            else:
+                raise
 
     def get_client(self) -> Client:
         """
@@ -156,10 +150,6 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             return self._client
 
         new_api_token = self.api_token or os.environ.get("HCLOUD_API_TOKEN")
-        #new_api_token = (
-        #    self.get_defn().apiToken if self.name in self.depl.definitions else None  # type: ignore
-        #) or os.environ.get("HCLOUD_API_TOKEN")
-
         if new_api_token is not None:
             self.api_token = new_api_token
 
@@ -202,7 +192,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
 
     def get_udev_name(self, volume_id: str) -> str:
         return "/dev/disk/by-id/scsi-0HC_Volume_{0}".format(volume_id)
-            
+
     def get_physical_spec(self) -> Dict[Any, Any]:
 
         ipv4 = [{"address": self.public_ipv4, "prefixLength": 32}]
@@ -216,9 +206,9 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
 
         def get_interface_name(i: int) -> str:
             if self.server_type.startswith("cx"):
-                return "ens" + str(10+i)
+                return "ens" + str(10 + i)
             else:
-                return "enp" + str(7+i) + "s0"
+                return "enp" + str(7 + i) + "s0"
 
         spec = {
             "imports": [RawValue("<nixpkgs/nixos/modules/profiles/qemu-guest.nix>")],
@@ -251,7 +241,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
 
         for i, v in enumerate(self.server_networks.values()):
             private_ipv4_addresses = [
-                { "address": addr, "prefixLength": 32 }
+                {"address": addr, "prefixLength": 32}
                 for addr in [v["privateIP"]] + v["aliasIPs"]
             ]
             spec[("networking", "interfaces", get_interface_name(i))] = {
@@ -266,7 +256,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
 
         return spec
 
-    def _update_attr(self, attr, k: str, v: Optional[Dict[str, Any]]) -> None:
+    def _update_attr(self, attr: str, k: str, v: Optional[Dict[str, Any]]) -> None:
         x = getattr(self, attr)
         if v is None:
             x.pop(k, None)
@@ -289,7 +279,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             # Detect destroyed networks
             if network is None:
                 if name not in defn.server_networks:  # we dont need it
-                    self.warn(
+                    self.logger.warn(
                         "forgetting about network ‘{0}’ that no longer exists and "
                         "is no longer needed by the deployment specification".format(
                             name
@@ -305,7 +295,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                     )
             # Detect network detachment
             elif network.id not in attached:
-                self.warn(
+                self.logger.warn(
                     "instance was manually detached from network ‘{0}’ [{1}]".format(
                         name, network.id
                     )
@@ -329,6 +319,8 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                         " but it doesn't exist...".format(name)
                     )
 
+                # NixOps will update machines in parallel, so retry
+                # network attachment to deal with resource conflict.
                 def attach_to_network() -> bool:
                     try:
                         action = self.get_instance().attach_to_network(
@@ -338,7 +330,8 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                     except APIException as e:
                         if e.code == "conflict":
                             return False
-                        else: raise
+                        else:
+                            raise
                     else:
                         self._update_attr("server_networks", x["network"], x)
                         return True
@@ -363,9 +356,11 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             # Detect manually destroyed floating IPs
             if fip is None:
                 if name not in defn.ip_addresses:  # we dont need it
-                    self.warn(
+                    self.logger.warn(
                         "forgetting about floating IP ‘{0}’ that no longer exists"
-                        " and is no longer needed by the deployment specification".format(name)
+                        " and is no longer needed by the deployment specification".format(
+                            name
+                        )
                     )
                     self._update_attr("ip_addresses", name, None)
                 else:
@@ -376,17 +371,19 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                         )
                     else:
                         msg = "floating IP ‘{0}’ (used by {1}) was manually destroyed"
-                    raise Exception(msg.format(name,self.full_name))
+                    raise Exception(msg.format(name, self.full_name))
 
             # Detect unassigned floating IPs
             elif name not in assigned:
                 if name not in defn.ip_addresses:  # we dont need it
-                    self.warn(
+                    self.logger.warn(
                         "forgetting about unassigned floating IP ‘{0}’ [{1}] "
-                        "that is no longer needed by the deployment specification".format(name, fip.id)
+                        "that is no longer needed by the deployment specification".format(
+                            name, fip.id
+                        )
                     )
                 else:  # we do need it
-                    self.warn(
+                    self.logger.warn(
                         "floating IP ‘{0}’ [{1}] was manually unassigned; "
                         "will reassign it.".format(name, fip.id)
                     )
@@ -402,9 +399,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                         " but it doesn't exist...".format(name)
                     )
                 self.logger.log(
-                    "assigning floating IP ‘{0}’ [{1}]...".format(
-                        name, fip.id
-                    )
+                    "assigning floating IP ‘{0}’ [{1}]...".format(name, fip.id)
                 )
                 action = fip.assign(self.get_instance())
                 self.wait_on_action(action)
@@ -424,9 +419,11 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             # Detect destroyed volumes.
             if volume is None:
                 if name not in defn.volumes:  # we dont need it
-                    self.warn(
+                    self.logger.warn(
                         "forgetting about volume ‘{0}’ that no longer exists and"
-                        " is no longer needed by the deployment specification".format(name)
+                        " is no longer needed by the deployment specification".format(
+                            name
+                        )
                     )
                 else:
                     if name.startswith("nixops-"):
@@ -436,19 +433,19 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                         )
                     else:
                         msg = "volume ‘{0}’ (used by {1}) was manually destroyed"
-                    raise Exception(msg.format(name,self.full_name))
-                    
+                    raise Exception(msg.format(name, self.full_name))
+
             # Detect detached volumes.
             elif name not in attached:
                 if name not in defn.volumes:  # we dont need it
-                    self.warn(
+                    self.logger.warn(
                         "forgetting about detached volume ‘{0}’ [{1}] that is no"
                         " longer needed by the deployment specification".format(
                             name, volume.id
                         )
                     )
                 else:  # we do need it
-                    self.warn(
+                    self.logger.warn(
                         "volume ‘{0}’ [{1}] was manually detached; will reattach it".format(
                             name, volume.id
                         )
@@ -456,7 +453,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                 self._update_attr("volumes", name, None)
             # Detach existing attached volumes if required.
             elif name not in defn.volumes:
-                self.warn(
+                self.logger.warn(
                     "detaching volume ‘{0}’ [{1}] that is no longer"
                     " needed by the deployment specification".format(name, volume.id)
                 )
@@ -472,7 +469,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
 
                 volume = self.get_client().volumes.get_by_name(name)
                 if volume is None:
-                    self.warn(
+                    self.logger.warn(
                         "tried to attach non-NixOps managed volume ‘{0}’,"
                         " but it doesn't exist... skipping".format(name)
                     )
@@ -599,7 +596,9 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                     with res.depl._db:
                         res.needsFSResize = False
 
-    def create_after(self, resources, defn) -> Set[HetznerCloudResourceState]:
+    def create_after(
+        self, resources, defn: HetznerCloudDefinition
+    ) -> Set[HetznerCloudResourceState]:
         return {
             r
             for r in resources
@@ -686,12 +685,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         allow_reboot: bool,
         allow_recreate: bool,
     ) -> None:
-        #self.logger.log("check          -> {}".format(check))
-        #self.logger.log("allow_reboot   -> {}".format(allow_reboot))
-        #self.logger.log("allow_recreate -> {}".format(allow_recreate))
         self.api_token = defn.api_token
-        self.logger.log("api token: {}".format(self.api_token))
-        self.logger.log("conf token: {}".format(defn.api_token))
 
         if self.state != self.UP:
             check = True
@@ -701,16 +695,21 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         if self.api_token and self.api_token != defn.api_token:
             raise Exception("cannot change api token of an existing instance")
 
-        # Stop the instance (if allowed) to handle attribute changes which
-        # require rebooting or recreating. i.e. server_type
+        # Destroy the instance (if allowed) to handle attribute changes which
+        # require recreating i.e. location
         if (
             self.vm_id
-            and (
-                (allow_reboot and self.server_type != defn.server_type)
-                or
-                (allow_recreate and self.location != defn.location)
+            and allow_recreate
+            and self.location != defn.location
+            and self.depl.logger.confirm(
+                "changing server location requires recreate, are you sure?"
             )
         ):
+            self._destroy()
+
+        # Stop the instance (if allowed) to handle attribute changes which
+        # require rebooting i.e. server_type
+        if self.vm_id and allow_reboot and self.server_type != defn.server_type:
             self.stop()
             check = True
 
@@ -719,6 +718,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         # Restart stopped instances.
         if self.vm_id and check:
             instance = self.get_instance()
+            print(instance.status)
 
             if instance is None or instance.status in {"deleting"}:
                 if not allow_recreate:
@@ -733,29 +733,23 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                     )
                 )
                 self.cleanup_state()
-            elif instance.status == "off":                
-                if (
-                    self.location != defn.location
-                    and self.depl.logger.confirm(
-                        "changing server location requires recreate, are you sure?"
-                    )
-                ):
-                    self._destroy()
 
-                # Modify the server type, if desired.
-                elif self.server_type != defn.server_type:
-                    self.logger.log(
-                        "changing server type from ‘{0}’ to ‘{1}’...".format(
-                            self.server_type, defn.server_type
-                        )
+            # Modify the server type, if desired. FIXME store disk size
+            # in state to enable option to later downsize server type.
+            if instance.status == "off" and self.server_type != defn.server_type:
+                self.logger.log_start(
+                    "changing server type from ‘{0}’ to ‘{1}’;"
+                    " may take a few minutes...".format(
+                        self.server_type, defn.server_type
                     )
-                    self.warn(
-                        "nixops does not currently support server type downgrading"
-                    )
-                    # FIXME store disk size in state to enable downsizing server type
-                    instance.change_type(defn.server_type, upgrade_disk=True)
-                    with self.depl._db:
-                        self.server_type = defn.server_type
+                )
+                instance.change_type(
+                    ServerType(defn.server_type), upgrade_disk=True
+                ).wait_until_finished()
+                self.logger.log_end("done!")
+
+                with self.depl._db:
+                    self.server_type = defn.server_type
 
                 self.logger.log("instance was stopped, restarting...")
                 self.start()
@@ -831,6 +825,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         self.logger.log_start("powering on {0}...".format(self.full_name))
         self.wait_on_action(self.get_client().servers.power_on(instance))
         self.wait_for_ssh()
+        self.state = self.UP
 
     def stop(self) -> None:
         question = "are you sure you want to stop {0}?"
@@ -853,13 +848,13 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         if hard:
             self.logger.log_start("sending hard reset to {0}...".format(self.full_name))
             self.wait_on_action(self.get_client().servers.reset(instance))
-            self.wait_for_ssh()
         else:
             self.logger.log_start(
                 "sending ACPI reboot request to {0}...".format(self.full_name)
             )
             self.wait_on_action(self.get_client().servers.reboot(instance))
-            self.wait_for_ssh()
+        self.wait_for_ssh()
+        self.state = self.UP
 
     def _check(self, res):
         if not self.vm_id:

@@ -5,7 +5,6 @@
 from hcloud import APIException
 from hcloud.networks.domain import NetworkSubnet, NetworkRoute
 
-from nixops.util import attr_property
 from nixops.diff import Handler
 from nixops.resources import ResourceDefinition
 from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
@@ -14,8 +13,10 @@ from typing import Any, Dict, Sequence, Tuple
 
 from .types.network import NetworkOptions, RouteOptions
 
-def hashable(x: RouteOptions) -> Tuple[str,str]:
+
+def hashable(x: RouteOptions) -> Tuple[str, str]:
     return x.destination, x.gateway
+
 
 class NetworkDefinition(ResourceDefinition):
     """
@@ -43,10 +44,8 @@ class NetworkState(HetznerCloudResourceState):
 
     definition_type = NetworkDefinition
 
-    network_id = attr_property("networkId", None)
-    
     _resource_type = "networks"
-    _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + ["networkId"]
+    _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED
 
     @classmethod
     def get_type(cls):
@@ -54,7 +53,6 @@ class NetworkState(HetznerCloudResourceState):
 
     def __init__(self, depl, name, id):
         super(HetznerCloudResourceState, self).__init__(depl, name, id)
-#        self.network_id = self.resource_id
         self.handle_create_network = Handler(
             ["ipRange"], handle=self.realise_create_network,
         )
@@ -79,10 +77,6 @@ class NetworkState(HetznerCloudResourceState):
         return "{0}".format(s)
 
     @property
-    def resource_id(self):
-        return self._state.get("networkId", None)
-
-    @property
     def full_name(self) -> str:
         return "Hetzner Cloud Network {0}".format(self.resource_id)
 
@@ -98,15 +92,11 @@ class NetworkState(HetznerCloudResourceState):
     def cleanup_state(self) -> None:
         with self.depl._db:
             self.state = self.MISSING
-            self._state["networkId"] = None
+            self.resource_id = None
             self._state["ipRange"] = None
             self._state["subnets"] = None
             self._state["routes"] = None
             self._state["labels"] = None
-
-    def warn_changed_attr(self, attr: str, v):
-        self.warn(attr + " attribute was changed manually, updating state")
-        self._state[attr] = v
 
     def _destroy(self) -> None:
         instance = self.get_instance()
@@ -132,17 +122,15 @@ class NetworkState(HetznerCloudResourceState):
             self._client = None
 
         self.log_start("creating virtual network '{0}'...".format(name))
-        network_id = self.get_client().networks.create(
-            name=name,
-            ip_range=defn.ipRange
-        ).id
+        self.resource_id = (
+            self.get_client().networks.create(name=name, ip_range=defn.ipRange).id
+        )
 
         with self.depl._db:
             self.state = self.STARTING
-            self._state["networkId"] = network_id
             self._state["ipRange"] = defn.ipRange
 
-        self.wait_for_resource_available(network_id)
+        self.wait_for_resource_available(self.resource_id)
 
     def realise_modify_subnets(self, allow_recreate: bool) -> None:
         defn: NetworkOptions = self.get_defn().config
@@ -175,7 +163,7 @@ class NetworkState(HetznerCloudResourceState):
             self.wait_on_action(instance.delete_route(NetworkRoute(d1, g1)))
 
         for d2, g2 in final_routes - prev_routes:
-            self.logger.log("adding route for {0}".format(g2))
+            self.logger.log("adding route to {0}".format(g2))
             self.wait_on_action(instance.add_route(NetworkRoute(d2, g2)))
 
         with self.depl._db:

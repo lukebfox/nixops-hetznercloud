@@ -41,11 +41,8 @@ class VolumeState(HetznerCloudResourceState):
 
     definition_type = VolumeDefinition
 
-    volume_id = attr_property("volumeId", None)
-
     _resource_type = "volumes"
     _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + [
-        "volumeId",
         "needsFSResize",
     ]
 
@@ -57,7 +54,6 @@ class VolumeState(HetznerCloudResourceState):
 
     def __init__(self, depl, name, id):
         super(HetznerCloudResourceState, self).__init__(depl, name, id)
-        self.volume_id = self.resource_id
         self.handle_create_volume = Handler(
             ["location", "fsType"], handle=self.realise_create_volume
         )
@@ -81,10 +77,6 @@ class VolumeState(HetznerCloudResourceState):
         return s
 
     @property
-    def resource_id(self):
-        return self._state.get("volumeId", None)
-
-    @property
     def full_name(self) -> str:
         return "Hetzner Cloud Volume {0} [{1}]".format(
             self.resource_id, self._state.get("location", None)
@@ -102,8 +94,8 @@ class VolumeState(HetznerCloudResourceState):
     def cleanup_state(self) -> None:
         with self.depl._db:
             self.state = self.MISSING
+            self.resource_id = None
             self.needsFSResize = None
-            self._state["volumeId"] = None
             self._state["location"] = None
             self._state["size"] = None
             self._state["fsType"] = None
@@ -158,6 +150,7 @@ class VolumeState(HetznerCloudResourceState):
             )
             if response.action:
                 response.action.wait_until_finished()
+            self.resource_id = response.volume.id
         except ActionFailedException:
             raise Exception(
                 "Failed to create Hetzner Cloud volume resource "
@@ -171,7 +164,6 @@ class VolumeState(HetznerCloudResourceState):
 
         with self.depl._db:
             self.state = self.STARTING
-            self._state["volumeId"] = response.volume.id
             self._state["location"] = defn.location
             self._state["size"] = defn.size
             self._state["fsType"] = defn.fsType
@@ -185,9 +177,7 @@ class VolumeState(HetznerCloudResourceState):
             raise Exception("decreasing a volume's size isn't supported.")
         elif size < defn.size:
             self.logger.log(
-                "increasing volume size from {0} GiB to {1} GiB".format(
-                    size, defn.size
-                )
+                "increasing volume size from {0} GiB to {1} GiB".format(size, defn.size)
             )
 
             self.get_instance().resize(defn.size).wait_until_finished()

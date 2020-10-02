@@ -35,14 +35,6 @@ with lib;
       description = "Certificate key in PEM format";
     };
     
-    certificateId = mkOption {
-      default = "";
-      type = types.str;
-      description = ''
-        The Certificate id generated from Hetzner Cloud. This is set by NixOps
-      '';
-    };
-    
   } // import ./common-hetznercloud-options.nix { inherit lib; };
   
   config._type = "hetznercloud-certificate";

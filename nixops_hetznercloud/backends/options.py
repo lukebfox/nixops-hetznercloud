@@ -3,7 +3,6 @@ from nixops.resources import ResourceOptions
 from typing import Mapping
 from typing import Optional
 from typing import Sequence
-from typing import Any
 
 
 class ServerNetworkOptions(ResourceOptions):

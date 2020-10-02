@@ -5,7 +5,6 @@
 from hcloud import APIException
 
 from nixops.diff import Handler
-from nixops.util import attr_property
 from nixops.resources import ResourceDefinition
 from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
 
@@ -40,47 +39,38 @@ class CertificateState(HetznerCloudResourceState):
 
     definition_type = CertificateDefinition
 
-    certificate_id = attr_property("certificateId", None)
-
     _resource_type = "certificates"
-    _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + [
-        "certificateId"
-    ]
+    _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED
 
     @classmethod
     def get_type(cls):
         return "hetznercloud-certificate"
 
     def __init__(self, depl, name, id):
-        HetznerCloudResourceState.__init__(self, depl, name, id)
-        self.certificate_id = self.resource_id
+        super(HetznerCloudResourceState, self).__init__(depl, name, id)
         self.handle_create_certificate = Handler(
-            ["certificate", "privateKey"],
-            handle=self.realise_create_certificate,
+            ["certificate", "privateKey"], handle=self.realise_create_certificate,
         )
         self.handle_modify_labels = Handler(
             ["labels"],
             after=[self.handle_create_certificate],
             handle=super().realise_modify_labels,
         )
-        
 
     def show_type(self):
         s = super(CertificateState, self).show_type()
         return "{0}".format(s)
 
     @property
-    def resource_id(self):
-        return self._state.get("certificateId", None)
-
-    @property
     def full_name(self) -> str:
-        return "Hetzner Cloud Certificate {0} [{1}]".format(self.resource_id, self.name)
+        return "Hetzner Cloud Certificate {0}".format(self.resource_id)
 
     def prefix_definition(self, attr: Any) -> Dict[Sequence[str], Any]:
         return {("resources", "hetznerCloudCertificates"): attr}
 
     def get_physical_spec(self) -> Dict[str, Any]:
+        print("spec")
+        print(self.resource_id)
         return {"certificateId": self.resource_id}
 
     def get_definition_prefix(self) -> str:
@@ -89,7 +79,7 @@ class CertificateState(HetznerCloudResourceState):
     def cleanup_state(self) -> None:
         with self.depl._db:
             self.state = self.MISSING
-            self._state["certificateId"] = None
+            self.resource_id = None
             self._state["certificate"] = None
             self._state["privateKey"] = None
             self._state["labels"] = None
@@ -109,7 +99,7 @@ class CertificateState(HetznerCloudResourceState):
         if self.state == self.UP:
             if not allow_recreate:
                 raise Exception(
-                    "{} definition changed and it needs to be recreated "
+                    "{0} definition changed and it needs to be recreated "
                     "use --allow-recreate if you want to create a new one".format(
                         self.full_name
                     )
@@ -120,29 +110,20 @@ class CertificateState(HetznerCloudResourceState):
 
         name = self.get_default_name()
         self.logger.log("creating certificate '{}'...".format(name))
-        try:
-            bound_certificate = self.get_client().certificates.create(
-                name=name,
-                certificate=defn.certificate,
-                private_key=defn.privateKey,
-            )
-            self.certificate_id = bound_certificate.id
-        except APIException as e:
-            if e.code == "invalid_input":
-                raise Exception(
-                    "couldn't create Certificate Resource due to {}".format(e.message)
-                )
-            else:
-                raise e
+        bound_certificate = self.get_client().certificates.create(
+            name=name, certificate=defn.certificate, private_key=defn.privateKey,
+        )
+        self.resource_id = bound_certificate.id
 
         with self.depl._db:
             self.state = self.STARTING
-            self._state["certificateId"] = self.certificate_id
             self._state["certificate"] = defn.certificate
             self._state["privateKey"] = defn.privateKey
 
-        self.wait_for_resource_available(self.certificate_id)
+        self.wait_for_resource_available(self.resource_id)
+        print(self.resource_id)
 
     def destroy(self, wipe: bool = False) -> bool:
+        print(self.resource_id)
         self._destroy()
         return True

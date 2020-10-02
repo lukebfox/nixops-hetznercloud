@@ -6,4 +6,3 @@ class SSHKeyOptions(ResourceOptions):
     apiToken: str
     publicKey: str
     labels: Mapping[str, str]
-    sshKeyId: str

@@ -12,15 +12,15 @@ from hcloud.actions.client import BoundAction
 from nixops.util import attr_property
 from nixops.resources import ResourceState, DiffEngineResourceState
 
-from typing import Dict, Any, Optional    
+from typing import Dict, Any, Optional
 
 
 class HetznerCloudResourceState(DiffEngineResourceState):
 
-    COMMON_HCLOUD_RESERVED = ["apiToken"]
+    COMMON_HCLOUD_RESERVED = ["resourceId", "apiToken"]
 
     _resource_type: str
-#    _client: Optional[Client]
+    _client: Optional[Client]
 
     state = attr_property("state", ResourceState.MISSING, int)
     resource_id = attr_property("resourceId", None)
@@ -70,20 +70,22 @@ class HetznerCloudResourceState(DiffEngineResourceState):
         """
         Generic method to get or create a Hetzner Cloud client.
         """
-        
+
         if hasattr(self, "_client"):
             if self._client:
                 return self._client
 
         new_api_token = (
-            self.get_defn().config.apiToken if self.depl.definitions else None  # type: ignore
+            self.get_defn().config.apiToken
+            if self.name in (self.depl.definitions or [])
+            else None  # type: ignore
         ) or os.environ.get("HCLOUD_API_TOKEN")
 
         if new_api_token is not None:
             self.api_token = new_api_token
 
         if self.api_token is None:
-            raise Exception("please set ‘apiToken’ ors $HCLOUD_API_TOKEN")
+            raise Exception("please set ‘apiToken’ or $HCLOUD_API_TOKEN")
 
         self._client = Client(token=self.api_token)
         return self._client
@@ -104,9 +106,8 @@ class HetznerCloudResourceState(DiffEngineResourceState):
         if resource_type == "":
             resource_type = self._resource_type
         while True:
-            subclient = getattr(self.get_client(), resource_type)
-            resource = subclient.get_by_id(resource_id)
-            if resource.created is None:
+            res = getattr(self.get_client(), resource_type).get_by_id(resource_id)
+            if res.created is None:
                 self.logger.log_continue(".")
                 time.sleep(1)
             else:
@@ -116,22 +117,6 @@ class HetznerCloudResourceState(DiffEngineResourceState):
         with self.depl._db:
             self.state = self.UP
 
-    def _check(self) -> None:
-        if self.resource_id is None:
-            return
-        instance = self.get_instance()
-        if instance is None:
-            self.warn("{0} was deleted from outside nixops; it needs to be recreated...")
-            self.cleanup_state()
-        elif self.state == self.STARTING:
-            self.wait_for_resource_available(self.resource_id)
-
-    def wait_with_progress(self, action: BoundAction, message: str) -> None:
-        while action and action.progress < 100:
-            self.logger.log_continue("{0}: {1}%\r".format(message, action.progress))
-            time.sleep(1)
-            action = self.get_client().actions.get_by_id(action.id)
-
     def wait_on_action(self, action: BoundAction) -> None:
         while action.status == "running":
             self.logger.log_continue(".")
@@ -140,3 +125,20 @@ class HetznerCloudResourceState(DiffEngineResourceState):
         self.logger.log_end("")
         if action.status != "success":
             raise Exception("unexpected status: {0}".format(action.status))
+
+    def cleanup_state(self) -> None:
+        """Discard all state pertaining to an instance"""
+        raise NotImplementedError
+
+    def _check(self) -> None:
+        if self.resource_id is None:
+            return
+        instance = self.get_instance()
+        if instance is None:
+            self.warn(
+                "{0} was deleted from outside nixops;"
+                "it needs to be recreated...".format(self.full_name)
+            )
+            self.cleanup_state()
+        elif self.state == self.STARTING:
+            self.wait_for_resource_available(self.resource_id)

@@ -37,8 +37,10 @@ class SSHKeyState(HetznerCloudResourceState):
     State of an SSH Key.
     """
 
+    definition_type = SSHKeyDefinition
+
     _resource_type = "ssh_keys"
-    _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + ["sshKeyId"]
+    _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED
 
     @classmethod
     def get_type(cls):
@@ -46,7 +48,6 @@ class SSHKeyState(HetznerCloudResourceState):
 
     def __init__(self, depl, name, id):
         super(HetznerCloudResourceState, self).__init__(depl, name, id)
-        self.ssh_key_id = self.resource_id
         self.handle_create_ssh_key = Handler(
             ["publicKey"], handle=self.realise_create_ssh_key,
         )
@@ -59,10 +60,6 @@ class SSHKeyState(HetznerCloudResourceState):
     def show_type(self):
         s = super(SSHKeyState, self).show_type()
         return "{0}".format(s)
-
-    @property
-    def resource_id(self):
-        return self._state.get("sshKeyId", None)
 
     @property
     def full_name(self) -> str:
@@ -80,6 +77,7 @@ class SSHKeyState(HetznerCloudResourceState):
     def cleanup_state(self) -> None:
         with self.depl._db:
             self.state = self.MISSING
+            self.resource_id = None
             self._state["sshKeyId"] = None
             self._state["publicKey"] = ""  # None
             self._state["labels"] = None
@@ -112,12 +110,9 @@ class SSHKeyState(HetznerCloudResourceState):
 
         self.logger.log("creating ssh key '{}'...".format(name))
         try:
-            self.ssh_key_id = (
+            self.resource_id = (
                 self.get_client()
-                .ssh_keys.create(
-                    name=name,
-                    public_key=defn.publicKey,
-                )
+                .ssh_keys.create(name=name, public_key=defn.publicKey)
                 .id
             )
         except APIException as e:
@@ -130,10 +125,9 @@ class SSHKeyState(HetznerCloudResourceState):
 
         with self.depl._db:
             self.state = self.STARTING
-            self._state["sshKeyId"] = self.ssh_key_id
             self._state["publicKey"] = defn.publicKey
 
-        self.wait_for_resource_available(self.ssh_key_id)
+        self.wait_for_resource_available(self.resource_id)
 
     def destroy(self, wipe: bool = False) -> bool:
         self._destroy()

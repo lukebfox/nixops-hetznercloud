@@ -20,14 +20,6 @@ in
         Options are 'nbg1', 'fsn1', or 'hel1'.
       '';
     };
-
-    volumeId = mkOption {
-      default = "";
-      type = types.str;
-      description = ''
-        The Volume ID generated from Hetzner Cloud. This is set by NixOps
-      '';
-    };
     
   } // import ./common-hetznercloud-options.nix { inherit lib; };
 

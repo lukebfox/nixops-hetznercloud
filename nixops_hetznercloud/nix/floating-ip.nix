@@ -29,12 +29,6 @@ with lib;
         Choices are 'nbg1', 'fsn1' or 'hel1'.
       '';
     };
-
-    floatingIpId = mkOption {
-      default = "";
-      type = types.str;
-      description = "The Floating IP ID generated from Hetzner Cloud. This is set by NixOps";
-    };
     
     address = mkOption {
       default = "";

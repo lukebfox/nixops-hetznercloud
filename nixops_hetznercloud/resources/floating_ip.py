@@ -40,11 +40,10 @@ class FloatingIPState(HetznerCloudResourceState):
 
     definition_type = FloatingIPDefinition
 
-    floating_ip_id = attr_property("floatingIpId", None)
-    
+    address = attr_property("address", None)
+
     _resource_type = "floating_ips"
     _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + [
-        "floatingIpId",
         "address",
     ]
 
@@ -54,7 +53,6 @@ class FloatingIPState(HetznerCloudResourceState):
 
     def __init__(self, depl, name, id):
         super(HetznerCloudResourceState, self).__init__(depl, name, id)
-        self.floating_ip_id = self.resource_id
         self.handle_create_floating_ip = Handler(
             ["location", "type"], handle=self.realise_create_floating_ip,
         )
@@ -77,10 +75,6 @@ class FloatingIPState(HetznerCloudResourceState):
         return s
 
     @property
-    def resource_id(self):
-        return self._state.get("floatingIpId", None)
-
-    @property
     def full_name(self) -> str:
         return "Hetzner Cloud Floating IP {0} [{1}]".format(
             self.resource_id, self._state.get("address", None)
@@ -93,6 +87,7 @@ class FloatingIPState(HetznerCloudResourceState):
         return "resources.hetznerCloudFloatingIPs."
 
     def get_physical_spec(self) -> Dict[str, Any]:
+        print(self.resource_id)
         return {
             "floatingIpId": self.resource_id,
             "address": self._state.get("address", None),
@@ -101,7 +96,7 @@ class FloatingIPState(HetznerCloudResourceState):
     def cleanup_state(self) -> None:
         with self.depl._db:
             self.state = self.MISSING
-            self._state["floatingIpId"] = None
+            self.resource_id = None
             self._state["address"] = None
             self._state["description"] = None
             self._state["labels"] = None
@@ -141,8 +136,8 @@ class FloatingIPState(HetznerCloudResourceState):
             )
             if response.action:
                 response.action.wait_until_finished()
-            self.floating_ip_id = response.floating_ip.id
-            address = response.floating_ip.ip
+            self.resource_id = response.floating_ip.id
+            self.address = response.floating_ip.ip
             self.logger.log("IP address is {0}".format(self.address))
         except ActionFailedException:
             raise Exception(
@@ -157,12 +152,10 @@ class FloatingIPState(HetznerCloudResourceState):
 
         with self.depl._db:
             self.state = self.STARTING
-            self._state["floatingIpId"] = self.floating_ip_id
             self._state["location"] = defn.location
             self._state["type"] = defn.type
-            self._state["address"] = address
 
-        self.wait_for_resource_available(self.floating_ip_id)
+        self.wait_for_resource_available(self.resource_id)
 
     def realise_modify_description(self, allow_recreate: bool) -> None:
         defn: FloatingIPOptions = self.get_defn().config

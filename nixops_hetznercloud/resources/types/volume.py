@@ -8,4 +8,3 @@ class VolumeOptions(ResourceOptions):
     fsType: str
     labels: Mapping[str, str]
     location: str
-    volumeId: str
