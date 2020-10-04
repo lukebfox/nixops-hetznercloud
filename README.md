@@ -10,13 +10,13 @@ This plugin is in alpha! That means it's a work in progress, and not meant for p
 
 ## Installing NixOps with plugins
 
-There is no official method for this yet, however it is not difficult anymore. If you build your NixOS configurations with Flakes you can refer to [lukebfox/nixops-with-plugins](http://github.com/lukebfox/nixops-with-plugins) which comes with the [AWS](http://github.com/NixOS/nixops-aws), [GCE](http://github.com/nix-community/nixops-gce), Hetzner Cloud, [Virtd](http://github.com/nix-community/nixops-libvirtd) and [VBox](http://github.com/nix-community/nixops-vbox) plugins installed. Here is a [solid example](https://github.com/lukebfox/nix-infrastructure/) of this from my own configs. If you don't use flakes, with the [original](https://github.com/typetetris/nixops-with-plugins) is more appropriate.
+There is no official method for this yet, however it is not difficult anymore. If you build your NixOS configurations with Flakes you can use [nixops-with-plugins](http://github.com/lukebfox/nixops-with-plugins) as an input. It comes with the [AWS](http://github.com/NixOS/nixops-aws), [GCE](http://github.com/nix-community/nixops-gce), Hetzner Cloud, [Virtd](http://github.com/nix-community/nixops-libvirtd) and [VBox](http://github.com/nix-community/nixops-vbox) plugins installed. Here is a [solid example](https://github.com/lukebfox/nix-infrastructure/) of this from my own configs. If you don't use flakes, with the [original](https://github.com/typetetris/nixops-with-plugins) is more appropriate.
 
 ## Usage
 
 Before you can use NixOps to manage Hetzner Cloud Resources you must have a Hetzner Cloud account. You'll need to manually create any project which you want to be managed with NixOps, and generate a project-specific API token which NixOps will use for authentication (security>api tokens>generate api token).
 
-The example code introduces Hetzner Cloud resource management with NixOps. The NixOps deployment options specific to Hetzner Cloud are declared in the nix files. Supported resources are as follows:
+Currently supported resources are as follows:
 
 | Resource      | State |
 |:--------------|:-----:|
@@ -27,6 +27,11 @@ The example code introduces Hetzner Cloud resource management with NixOps. The N
 | Certificate   | :heavy_check_mark: |
 | SSHKey        | :x: |
 | LoadBalancer  | :x: |
+
+All NixOps deployment options specific to Hetzner Cloud are declared in the nix files at `nixops_hetznercloud/nix`.
+
+The example code introduces Hetzner Cloud resource management with NixOps.
+
 ## Developing
 
 To start developing on the NixOps Hetzner Cloud plugin, you can run:

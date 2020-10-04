@@ -2,9 +2,9 @@
 
 # Automatic provisioning of Hetzner Cloud Load Balancers.
 
-# import hcloud
+import hcloud
 
-# from nixops.diff import Handler
+from nixops.diff import Handler
 from nixops.resources import ResourceDefinition
 from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
 
@@ -35,6 +35,7 @@ class LoadBalancerState(HetznerCloudResourceState):
     State of a Hetzner Cloud Load Balancer.
     """
 
-    _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + [
-        "loadBalancerId"
-    ]
+    definition_type = LoadBalancerDefinition
+
+    _resource_type = "load_balancers"
+    _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED

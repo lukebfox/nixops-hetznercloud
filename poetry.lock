@@ -88,7 +88,7 @@ description = "the modular source code checker: pep8 pyflakes and co"
 name = "flake8"
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,>=2.7"
-version = "3.8.3"
+version = "3.8.4"
 
 [package.dependencies]
 mccabe = ">=0.6.0,<0.7.0"
@@ -182,7 +182,7 @@ typeguard = "^2.7.1"
 typing-extensions = "^3.7.4"
 
 [package.source]
-reference = "9da0ad37ea7806fa770fb285356c5a6b4dfc35e6"
+reference = "9a89cd539a5e3ee3ad068155d7f876eff9e1c4d1"
 type = "git"
 url = "https://github.com/lukebfox/nixops"
 [[package]]
@@ -389,7 +389,7 @@ python-versions = "*"
 version = "0.2.5"
 
 [metadata]
-content-hash = "9a703d6cdc8a0fc446772da866e9e6f28fd6642947755406941eedea45de1ec1"
+content-hash = "4b6a7702abbee26ff0a480a79e2b3ea95abe2da0c56e2348102bc1caa3bf4ea3"
 lock-version = "1.0"
 python-versions = "~3.8"
 
@@ -427,8 +427,8 @@ colorama = [
     {file = "colorama-0.4.3.tar.gz", hash = "sha256:e96da0d330793e2cb9485e9ddfd918d456036c7149416295932478192f4436a1"},
 ]
 flake8 = [
-    {file = "flake8-3.8.3-py2.py3-none-any.whl", hash = "sha256:15e351d19611c887e482fb960eae4d44845013cc142d42896e9862f775d8cf5c"},
-    {file = "flake8-3.8.3.tar.gz", hash = "sha256:f04b9fcbac03b0a3e58c0ab3a0ecc462e023a9faf046d57794184028123aa208"},
+    {file = "flake8-3.8.4-py2.py3-none-any.whl", hash = "sha256:749dbbd6bfd0cf1318af27bf97a14e28e5ff548ef8e5b1566ccfb25a11e7c839"},
+    {file = "flake8-3.8.4.tar.gz", hash = "sha256:aadae8761ec651813c24be05c6f7b4680857ef6afaae4651a4eccaef97ce6c3b"},
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},

@@ -6,5 +6,3 @@ class LoadBalancerOptions(ResourceOptions):
     apiToken: str
     labels: Mapping[str, str]
     location: str
-    # networkId: str
-    loadBalancerId: str

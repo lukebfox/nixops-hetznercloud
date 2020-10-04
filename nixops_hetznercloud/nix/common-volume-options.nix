@@ -15,9 +15,8 @@ with lib;
       example = 50;
       type = with types; nullOr int;
       description = ''
-        Size of the volume in GB. Standard limits are between 10GB and
-        1024GB. It is possible to increase the upper limit to 10240GB
-        on request.
+        Size of the volume in GB. Standard limits are between 10GB and 1024GB.
+        It is possible to increase the upper limit to 10240GB on request.
       '';
     };
    
@@ -26,8 +25,7 @@ with lib;
       example = "xfs";
       type = with types; nullOr (enum ["ext4" "xfs"]);
       description = ''
-        The filesystem format for this volume.
-        Choices are 'ext4' or 'xfs'.
+        The filesystem format for this volume. Choices are 'ext4' or 'xfs'.
       '';
     };
 

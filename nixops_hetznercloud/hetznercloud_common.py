@@ -97,6 +97,7 @@ class HetznerCloudResourceState(DiffEngineResourceState):
         self.get_instance().update(
             labels={**self.get_common_labels(), **dict(defn.labels)}
         )
+#        print(defn.labels)
         with self.depl._db:
             self._state["labels"] = dict(defn.labels)
 

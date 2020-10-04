@@ -10,7 +10,8 @@ let
 
   hetznercloud_dev_prefix = "/dev/disk/by-id/scsi-0HC_Volume_";
 
-  commonHetznerCloudOptions = import ./common-hetznercloud-options.nix { inherit lib; };
+  commonHetznerCloudOptions =
+    import ./common-hetznercloud-options.nix { inherit lib; };
 
   hetznerCloudServerNetworkOptions =
     { config, ... }:
@@ -21,7 +22,8 @@ let
           type = resource "hetznercloud-network";
           apply = x: "nixops-${uuid}-${x._name}";
           description = ''
-            A Network Resource which this Hetzner Cloud instance should become reachable on.
+            A Network Resource which this Hetzner Cloud instance should become
+            reachable on.
           '';
         };
         privateIP = mkOption {
@@ -54,13 +56,11 @@ let
           default = "";
           example = literalExample "resources.hetznerCloudVolumes.volume1";
           type = with types; either str (resource "hetznercloud-volume");
-          apply = x: if builtins.isString x then x else "nixops-" + uuid + "-" + x._name;
+          apply = x: if builtins.isString x then x else "nixops-${uuid}-${x.name}";
           description = ''
             Hetzner Cloud identifier of the disk to be mounted. This can 
-            be the name (e.g. <literal>volume1</literal>) of a disk not 
-            managed by NixOps. It can also be a Volume resource (e.g.
-            <literal>resources.hetznerCloudVolumes.db</literal>).
-            Leave empty to create a HetznerCloud volume automatically. 
+            be the name (e.g. ``volume1``) of a disk not managed by NixOps.
+            It can also be a Volume resource (e.g. ``resources.hetznerCloudVolumes.db``).
           '';
         };
 
@@ -81,15 +81,15 @@ let
         description = ''
           Hetzner Cloud volume to be attached to this mount point. 
           This is shorthand for defining a separate
-          <option>deployment.hetznerCloud.volumes</option> attribute
-          entry.
+          ``deployment.hetznerCloud.volumes`` attribute entry.
         '';
       };
       config = mkAssert
         ( (config.hetznerCloud != null) || (config.device == null) )
         ''
-        Configuring fileSystem.<name?>.device is not supported for filesystems
-        on mounted Hetzner Cloud Volumes. This option definition is calculated runtime.
+        Configuring ``fileSystem.<name?>.device`` isn't supported for filesystems
+        on mounted Hetzner Cloud Volumes. This option definition is calculated
+        at runtime.
         ''
         {};
     };
@@ -108,7 +108,7 @@ in
       type = with types; nullOr (enum ["nbg1" "fsn1" "hel1"]);
       description = ''
         The ID of the location to create the server in.
-        Options are 'nbg1', 'fsn1', or 'hel1'.
+        Options are ``nbg1``, ``fsn1``, or ``hel1``.
       '';
     };
 
@@ -117,7 +117,7 @@ in
       example = "custom-server-name";
       type = types.str;
       description = ''
-        The Hetzner Cloud Server Instance <literal>Name</literal>. This name
+        The Hetzner Cloud Server Instance ``name``. This name
         must be unique within the scope of the Hetzner Cloud Project.
       '';
     };
@@ -128,7 +128,7 @@ in
       type = types.str;
       description = ''
         The Hetzner Cloud Server Instance type. A list of valid types can be
-        found at <link xlink:href='https://www.hetzner.de/cloud#pricing'/>
+        found `here <https://www.hetzner.de/cloud#pricing>`_.
       '';
     };
 
@@ -137,9 +137,11 @@ in
       example = [ { volume = "volume1"; } ];
       type = with types; listOf (submodule hetznerCloudDiskOptions);
       description = ''
-        TODO
+        List of attached Volumes. ``fileSystems`` attributes which contain
+        definitions for hetznerCloud options will get merged into this option
+        definition during evaluation.
       '';
-    };    
+    };
 
     deployment.hetznerCloud.serverNetworks = mkOption {
       default = [];
@@ -151,7 +153,7 @@ in
       default = [];
       example = "[resources.hetznerCloudFloatingIPs.fip1]";
       type = with types; listOf (either str (resource "hetznercloud-floating-ip"));
-      apply = map (x: if builtins.isString x then x else "nixops-" + uuid + "-" + x._name);
+      apply = map (x: if builtins.isString x then x else "nixops-${uuid}-${x._name}");
       description = ''
         Hetzner Cloud Floating IP address resources to bind to.
       '';
@@ -176,6 +178,8 @@ in
     
     nixpkgs.system = mkOverride 900 "x86_64-linux";
     services.openssh.enable = true;
+    
+    fileSystems = {};
 
     # note: this doesn't duplicate resource definition into the server definition eg size.
     deployment.hetznerCloud.volumes = mkFixStrictness

@@ -10,7 +10,7 @@ with lib;
     description = ''
       The Hetzner Cloud API Token which specifies the project to create this
       instance in. If left empty, it defaults to the contents of the
-      environment variable <envar>HCLOUD_API_TOKEN</envar>.
+      environment variable ``HCLOUD_API_TOKEN``.
     '';
   };
     

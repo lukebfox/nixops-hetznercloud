@@ -27,6 +27,7 @@ class HetznerCloudOptions(ResourceOptions):
     volumes: Sequence[DiskOptions]
     ipAddresses: Sequence[str]
     serverNetworks: Sequence[ServerNetworkOptions]
+#    fileSystems: Optional[Mapping[str, FilesystemsOptions]]
 
 
 class HetznerCloudMachineOptions(MachineOptions):

@@ -9,7 +9,7 @@ include = [ "nixops_hetznercloud/nix/*.nix" ]
 [tool.poetry.dependencies]
 python = "~3.8"
 hcloud = "1.8.1"
-nixops = {git = "https://github.com/lukebfox/nixops", rev = "master"}
+nixops = {git = "https://github.com/lukebfox/nixops", rev = "statedict-store-dict"}
 typing-extensions = "^3.7.4"
 
 [tool.poetry.dev-dependencies]

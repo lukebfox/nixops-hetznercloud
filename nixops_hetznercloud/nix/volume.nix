@@ -17,7 +17,7 @@ in
       type = types.enum ["nbg1" "fsn1" "hel1"];
       description = ''
         The ID of the location to create the volume in.
-        Options are 'nbg1', 'fsn1', or 'hel1'.
+        Choices are ``nbg1``, ``fsn1``, or ``hel1``.
       '';
     };
     
