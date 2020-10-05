@@ -85,9 +85,6 @@ class NetworkState(HetznerCloudResourceState):
     def get_definition_prefix(self) -> str:
         return "resources.hetznerCloudNetworks."
 
-    def get_physical_spec(self) -> Dict[Sequence[str], Any]:
-        return {"networkId": self.resource_id}
-
     def cleanup_state(self) -> None:
         with self.depl._db:
             self.state = self.MISSING

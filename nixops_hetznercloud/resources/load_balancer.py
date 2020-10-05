@@ -2,9 +2,9 @@
 
 # Automatic provisioning of Hetzner Cloud Load Balancers.
 
-import hcloud
+# import hcloud
 
-from nixops.diff import Handler
+# from nixops.diff import Handler
 from nixops.resources import ResourceDefinition
 from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
 

@@ -1,4 +1,7 @@
-{ apiToken ? "changeme" }:
+#{ apiToken ? "changeme" }:
+let
+  apiToken = "qFYCZtzCGcWVdIaje8fQWSOg4RmTICCwcomcOJJtUJcFm3DjDJ9Nl0kkX2ZyrFnx";
+in
 {
   network.description = "Hetzner Cloud network example deployment";
 

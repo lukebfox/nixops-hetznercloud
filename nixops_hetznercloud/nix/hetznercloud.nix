@@ -56,7 +56,7 @@ let
           default = "";
           example = literalExample "resources.hetznerCloudVolumes.volume1";
           type = with types; either str (resource "hetznercloud-volume");
-          apply = x: if builtins.isString x then x else "nixops-${uuid}-${x.name}";
+          apply = x: if builtins.isString x then x else "nixops-${uuid}-${x._name}";
           description = ''
             Hetzner Cloud identifier of the disk to be mounted. This can 
             be the name (e.g. ``volume1``) of a disk not managed by NixOps.
@@ -65,7 +65,8 @@ let
         };
 
         mountPoint = mkOption {
-          type = with types; str;
+          default = null;
+          type = with types; nullOr str;
           description = "The mountpoint for this volume.";
         };
 
@@ -134,7 +135,7 @@ in
 
     deployment.hetznerCloud.volumes = mkOption {
       default = [ ];
-      example = [ { volume = "volume1"; } ];
+      #example = [ { volume = "volume1"; } ]; TODO
       type = with types; listOf (submodule hetznerCloudDiskOptions);
       description = ''
         List of attached Volumes. ``fileSystems`` attributes which contain
@@ -145,7 +146,12 @@ in
 
     deployment.hetznerCloud.serverNetworks = mkOption {
       default = [];
-      example = [];  # TODO
+      example = literalExample '' 
+      [{
+        network = resources.hetznerCloudNetworks.network1;
+        privateIP = "10.1.0.2";
+      }]
+      '';
       type = with types; listOf (submodule hetznerCloudServerNetworkOptions);
     };
 
@@ -153,7 +159,7 @@ in
       default = [];
       example = "[resources.hetznerCloudFloatingIPs.fip1]";
       type = with types; listOf (either str (resource "hetznercloud-floating-ip"));
-      apply = map (x: if builtins.isString x then x else "nixops-${uuid}-${x._name}");
+      apply = map (x: if builtins.isString x then x else "nixops-" + uuid + "-" + x.name);
       description = ''
         Hetzner Cloud Floating IP address resources to bind to.
       '';
@@ -178,7 +184,7 @@ in
     
     nixpkgs.system = mkOverride 900 "x86_64-linux";
     services.openssh.enable = true;
-    
+
     fileSystems = {};
 
     # note: this doesn't duplicate resource definition into the server definition eg size.

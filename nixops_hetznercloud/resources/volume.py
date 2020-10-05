@@ -6,7 +6,7 @@ from hcloud import APIException
 from hcloud.actions.domain import ActionFailedException, ActionTimeoutException
 
 from nixops.diff import Handler
-from nixops.util import attr_property
+from nixops.util import attr_property, check_wait
 from nixops.resources import ResourceDefinition
 from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
 
@@ -88,9 +88,6 @@ class VolumeState(HetznerCloudResourceState):
     def get_definition_prefix(self) -> str:
         return "resources.hetznerCloudVolumes."
 
-    def get_physical_spec(self) -> Dict[str, Any]:
-        return {"volumeId": self.resource_id}
-
     def cleanup_state(self) -> None:
         with self.depl._db:
             self.state = self.MISSING
@@ -103,20 +100,37 @@ class VolumeState(HetznerCloudResourceState):
 
     def _destroy(self) -> None:
         instance = self.get_instance()
-        if instance is not None:
-            if instance.server is not None:
-                try:
-                    self.logger.log("detaching {0}...".format(self.full_name))
-                    instance.detach().wait_until_finished()
-                except APIException as e:
-                    print(e.code)
-                    raise
+
+        def detach_volume() -> bool:
+            self.logger.log("detaching {0}...".format(self.full_name))
             try:
-                self.logger.log("destroying {0}...".format(self.full_name))
+                instance.detach().wait_until_finished()
+            except APIException as e:
+                if e.code == "locked":
+                    return False
+                else:
+                    raise
+            else:
+                return True
+
+        def destroy_volume() -> bool:
+            self.logger.log("destroying {0}...".format(self.full_name))
+            try:
                 instance.delete()
             except APIException as e:
-                print(e.code)
-                raise
+                if e.code == "locked":
+                    return False
+                else:
+                    raise
+            else:
+                return True
+
+        if instance is not None:
+            # can't trust api for volume attach status, have to check it manually
+            if instance.server and self.get_client().servers.get_by_id(instance.server):
+                check_wait(detach_volume)
+            check_wait(destroy_volume)
+
         self.cleanup_state()
 
     def realise_create_volume(self, allow_recreate: bool) -> None:
@@ -187,5 +201,8 @@ class VolumeState(HetznerCloudResourceState):
                 self.needsFSResize = True
 
     def destroy(self, wipe: bool = False) -> bool:
+        question = "are you sure you want to destroy {0}?"
+        if not self.depl.logger.confirm(question.format(self.full_name)):
+            return False
         self._destroy()
         return True

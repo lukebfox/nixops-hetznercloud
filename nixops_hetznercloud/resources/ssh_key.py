@@ -68,9 +68,6 @@ class SSHKeyState(HetznerCloudResourceState):
     def prefix_definition(self, attr: Any) -> Dict[Sequence[str], Any]:
         return {("resources", "hetznerCloudSSHKeys"): attr}
 
-    def get_physical_spec(self) -> Dict[Sequence[str], Any]:
-        return {"sshKeyId": self.resource_id}
-
     def get_definition_prefix(self) -> str:
         return "resources.hetznerCloudSSHKeys."
 

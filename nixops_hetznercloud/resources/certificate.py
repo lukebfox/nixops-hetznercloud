@@ -66,11 +66,6 @@ class CertificateState(HetznerCloudResourceState):
     def prefix_definition(self, attr: Any) -> Dict[Sequence[str], Any]:
         return {("resources", "hetznerCloudCertificates"): attr}
 
-    def get_physical_spec(self) -> Dict[str, Any]:
-        print("spec")
-        print(self.resource_id)
-        return {"certificateId": self.resource_id}
-
     def get_definition_prefix(self) -> str:
         return "resources.hetznerCloudCertificates."
 
@@ -119,9 +114,7 @@ class CertificateState(HetznerCloudResourceState):
             self._state["privateKey"] = defn.privateKey
 
         self.wait_for_resource_available(self.resource_id)
-        print(self.resource_id)
 
     def destroy(self, wipe: bool = False) -> bool:
-        print(self.resource_id)
         self._destroy()
         return True

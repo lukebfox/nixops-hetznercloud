@@ -85,11 +85,9 @@ class FloatingIPState(HetznerCloudResourceState):
         return "resources.hetznerCloudFloatingIPs."
 
     def get_physical_spec(self) -> Dict[str, Any]:
-        print(self.resource_id)
-        return {
-            "floatingIpId": self.resource_id,
-            "address": self._state.get("address", None),
-        }
+        s = super(FloatingIPState, self).get_physical_spec()
+        s["address"] = self._state.get("address", None)
+        return s
 
     def cleanup_state(self) -> None:
         with self.depl._db:

@@ -31,6 +31,9 @@ class HetznerCloudResourceState(DiffEngineResourceState):
         self.resource_id = None
         self._client = None
 
+    def get_physical_spec(self) -> Dict[str, Any]:
+        return {"resourceId": self.resource_id}
+
     def get_common_labels(self) -> Dict[str, str]:
         labels = {
             "CharonNetworkUUID": self.depl.uuid,
@@ -97,7 +100,7 @@ class HetznerCloudResourceState(DiffEngineResourceState):
         self.get_instance().update(
             labels={**self.get_common_labels(), **dict(defn.labels)}
         )
-#        print(defn.labels)
+
         with self.depl._db:
             self._state["labels"] = dict(defn.labels)
 

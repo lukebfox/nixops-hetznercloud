@@ -1,10 +1,19 @@
 let
   apiToken = "qFYCZtzCGcWVdIaje8fQWSOg4RmTICCwcomcOJJtUJcFm3DjDJ9Nl0kkX2ZyrFnx";
   location = "nbg1";
-
 in
 {
   network.description = "Hetzner Cloud test deployment";
+
+  resources.hetznerCloudVolumes.volume1 = {
+    inherit apiToken location;
+    size = 10;
+  };
+
+  resources.hetznerCloudVolumes.volume3 = {
+    inherit apiToken location;
+    size = 10;
+  };
 
   machine1 =
     { config, resources, ... }:
@@ -13,16 +22,18 @@ in
       deployment.hetznerCloud = {
         inherit apiToken location;
         serverType = "cx11";
-#        volumes = [ resources.hetznerCloudVolumes.volume1 ];
+        volumes = [
+          { volume = resources.hetznerCloudVolumes.volume1; }
+          { volume = "volume2";
+            mountPoint = "/data2";
+          }
+        ];
       };
+      fileSystems."/data3".hetznerCloud.volume = resources.hetznerCloudVolumes.volume3;
+      fileSystems."/data4".hetznerCloud.volume = "volume4";
     };
 
-  resources.hetznerCloudVolumes.volume1 = {
-    inherit apiToken location;
-    size = 10;
-    fsType = "ext4";
-  };
-
+  
   # resources.hetznerCloudNetworks.network1 = {
   #   inherit apiToken;
   #   ipRange = "10.3.0.0/16";

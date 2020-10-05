@@ -11,7 +11,7 @@
         inherit apiToken location;
         serverType = "cx11";
         # Here you can attach Volumes without mounting them.
-        # volumes = [ resources.hetznerCloudVolumes.volume3; ];
+#        volumes = [ resources.hetznerCloudVolumes.volume3; ];
       };
 
       # Mount a volume managed by NixOps.

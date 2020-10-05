@@ -220,7 +220,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                     "device": v["device"],
                 }
                 for k, v in self.volumes.items()
-                if "mountPoint" in v
+                if v["mountPoint"]
             },
             # Hetzner Cloud networking defaults
             ("networking", "defaultGateway"): "172.31.1.1",
@@ -546,7 +546,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                 # get correct option definitions for volume resources
                 v["size"] = res._state["size"]
                 v["fsType"] = res._state["fsType"]
-                v["device"] = self.get_udev_name(res._state["volumeId"])
+                v["device"] = self.get_udev_name(res._state["resourceId"])
 
                 question = (
                     "volume {0} was resized, do you wish to grow its"
@@ -718,7 +718,6 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         # Restart stopped instances.
         if self.vm_id and check:
             instance = self.get_instance()
-            print(instance.status)
 
             if instance is None or instance.status in {"deleting"}:
                 if not allow_recreate:
@@ -793,12 +792,11 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             return
         self.logger.log("destroying {0}...".format(self.full_name))
 
-        # Detach non-nix managed volumes
+        # Detach volumes
         for name, v in self.volumes.items():
-            if not name.startswith("nixops-" + self.depl.uuid):
-                self.get_client().volumes.get_by_name(
-                    name
-                ).detach().wait_until_finished()
+            #            if not name.startswith("nixops-" + self.depl.uuid):
+            self.logger.log("detaching volume {0}...".format(name))
+            self.get_client().volumes.get_by_name(name).detach().wait_until_finished()
 
         instance = self.get_instance()
         if instance is not None:
