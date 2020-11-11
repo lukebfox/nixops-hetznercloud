@@ -1,9 +1,6 @@
 *~
 .coverage
-coverage.xml
-examples/*.json
-examples/*.lock
-html/
+htmlcov/
 result
 tags
 tests/test.nixops*

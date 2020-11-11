@@ -1,13 +1,12 @@
-import os.path
-import nixops.plugins
-from nixops.plugins import Plugin
+from os.path import dirname, abspath
+from nixops.plugins import Plugin, hookimpl
 from typing import List
 
 
 class NixopsHetznerCloudPlugin(Plugin):
     @staticmethod
     def nixexprs() -> List[str]:
-        return [os.path.dirname(os.path.abspath(__file__)) + "/nix"]
+        return [dirname(abspath(__file__)) + "/nix"]
 
     @staticmethod
     def load() -> List[str]:
@@ -17,6 +16,6 @@ class NixopsHetznerCloudPlugin(Plugin):
         ]
 
 
-@nixops.plugins.hookimpl
+@hookimpl
 def plugin() -> Plugin:
     return NixopsHetznerCloudPlugin()

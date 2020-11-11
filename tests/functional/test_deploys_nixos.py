@@ -1,5 +1,3 @@
-from nose import tools
-
 from tests.functional.single_server_test import SingleServerTest
 
 

@@ -36,12 +36,14 @@ The example code introduces Hetzner Cloud resource management with NixOps.
 To start developing on the NixOps Hetzner Cloud plugin, you can run:
 
 ```bash
-$ nix develop
+$ nix-shell
 $ poetry install
 $ poetry shell
 ```
 
-To run functional tests and produce a coverage report, execute `coverage-tests.py` from inside the development shell. Make sure you have `HCLOUD_API_TOKEN` set in your shell.
+## Testing
+
+From inside the development shell above, execute `pytest`. Remember to set the environmental variable `HCLOUD_API_TOKEN`.
 
 ---
 Credit to the maintainers of the nixops-aws plugin which was a really useful model for nixops plugins and elitak for the original nixos-infect script.
