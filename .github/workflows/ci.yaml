@@ -30,7 +30,7 @@ jobs:
         name:        ${{env.CACHIX_ID}}
         signingKey: '${{secrets.CACHIX_SIGNING_KEY}}'
     - name: Prefetch shell
-      run: nix-shell --run true
+      run: nix develop -c true
     - name: Parsing
       run: './ci/check-nix-files.sh'
 
@@ -52,7 +52,7 @@ jobs:
       with:
         name:        ${{env.CACHIX_ID}}
         signingKey: '${{secrets.CACHIX_SIGNING_KEY}}'
-    - run: nix-build
+    - run: nix build
 
   black:
     runs-on: ubuntu-latest
@@ -73,7 +73,7 @@ jobs:
         name:        ${{env.CACHIX_ID}}
         signingKey: '${{secrets.CACHIX_SIGNING_KEY}}'
     - name: Prefetch shell
-      run: nix-shell --run true
+      run: nix develop -c true
     - name: Black
       run: './ci/check-formatting.sh'
 
@@ -96,7 +96,7 @@ jobs:
         name:        ${{env.CACHIX_ID}}
         signingKey: '${{secrets.CACHIX_SIGNING_KEY}}'
     - name: Prefetch shell
-      run: nix-shell --run true
+      run: nix develop -c true
     - name: Flake8
       run: './ci/check-flake8.sh'
 
@@ -119,6 +119,6 @@ jobs:
         name:        ${{env.CACHIX_ID}}
         signingKey: '${{secrets.CACHIX_SIGNING_KEY}}'
     - name: Prefetch shell
-      run: nix-shell --run true
+      run: nix develop -c true
     - name: Mypy
       run: './ci/check-mypy.sh'
