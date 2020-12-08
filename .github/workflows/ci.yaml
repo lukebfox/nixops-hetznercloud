@@ -4,94 +4,120 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "**" ]
+
+env:
+  CACHIX_ID: nixops-hetznercloud
+  FLAKES_URL: https://github.com/numtide/nix-flakes-installer/releases/download/nix-3.0pre20200820_4d77513/install
+  FLAKES_CONF: experimental-features = nix-command flakes
+
 jobs:
+
   parsing:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
       uses: actions/checkout@v2.3.4
+      with:
+          fetch-depth: 0 # Nix Flakes doesn't work on shallow clones
     - name: Nix
       uses: cachix/install-nix-action@v12
       with:
-        nix_path: nixpkgs=channel:nixos-unstable
+        install_url:      ${{env.FLAKES_URL}}
+        extra_nix_config: ${{env.FLAKES_CONF}}
     - name: Cachix
       uses: cachix/cachix-action@v8
       with:
-        name: nixops-hetznercloud
-        signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
+        name:        ${{env.CACHIX_ID}}
+        signingKey: '${{secrets.CACHIX_SIGNING_KEY}}'
     - name: Prefetch shell
       run: nix-shell --run true
     - name: Parsing
       run: './ci/check-nix-files.sh'
+
   build:
     runs-on: ubuntu-latest
     needs: parsing
     steps:
     - name: Checkout
       uses: actions/checkout@v2.3.4
+      with:
+        fetch-depth: 0
     - name: Nix
       uses: cachix/install-nix-action@v12
       with:
-        nix_path: nixpkgs=channel:nixos-unstable
+        install_url:      ${{env.FLAKES_URL}}
+        extra_nix_config: ${{env.FLAKES_CONF}}
     - name: Cachix
       uses: cachix/cachix-action@v8
       with:
-        name: nixops-hetznercloud
-        signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
+        name:        ${{env.CACHIX_ID}}
+        signingKey: '${{secrets.CACHIX_SIGNING_KEY}}'
     - run: nix-build
+
   black:
     runs-on: ubuntu-latest
     needs: build
     steps:
     - name: Checkout
       uses: actions/checkout@v2.3.4
+      with:
+        fetch-depth: 0
     - name: Nix
       uses: cachix/install-nix-action@v12
       with:
-        nix_path: nixpkgs=channel:nixos-unstable
+        install_url:      ${{env.FLAKES_URL}}
+        extra_nix_config: ${{env.FLAKES_CONF}}
     - name: Cachix
       uses: cachix/cachix-action@v8
       with:
-        name: nixops-hetznercloud
-        signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
+        name:        ${{env.CACHIX_ID}}
+        signingKey: '${{secrets.CACHIX_SIGNING_KEY}}'
     - name: Prefetch shell
       run: nix-shell --run true
     - name: Black
       run: './ci/check-formatting.sh'
+
   flake8:
     runs-on: ubuntu-latest
     needs: build
     steps:
     - name: Checkout
       uses: actions/checkout@v2.3.4
+      with:
+        fetch-depth: 0
     - name: Nix
       uses: cachix/install-nix-action@v12
       with:
-        nix_path: nixpkgs=channel:nixos-unstable
+        install_url:      ${{env.FLAKES_URL}}
+        extra_nix_config: ${{env.FLAKES_CONF}}
     - name: Cachix
       uses: cachix/cachix-action@v8
       with:
-        name: nixops-hetznercloud
-        signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
+        name:        ${{env.CACHIX_ID}}
+        signingKey: '${{secrets.CACHIX_SIGNING_KEY}}'
     - name: Prefetch shell
       run: nix-shell --run true
     - name: Flake8
       run: './ci/check-flake8.sh'
+
   mypy:
     runs-on: ubuntu-latest
     needs: build
     steps:
     - name: Checkout
       uses: actions/checkout@v2.3.4
+      with:
+        fetch-depth: 0
     - name: Nix
       uses: cachix/install-nix-action@v12
       with:
-        nix_path: nixpkgs=channel:nixos-unstable
+        install_url:      ${{env.FLAKES_URL}}
+        extra_nix_config: ${{env.FLAKES_CONF}}
     - name: Cachix
       uses: cachix/cachix-action@v8
       with:
-        name: nixops-hetznercloud
-        signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
+        name:        ${{env.CACHIX_ID}}
+        signingKey: '${{secrets.CACHIX_SIGNING_KEY}}'
     - name: Prefetch shell
       run: nix-shell --run true
     - name: Mypy

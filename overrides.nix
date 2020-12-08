@@ -1,4 +1,4 @@
-{ pkgs }:
+pkgs:
 
 self: super: {
 
@@ -10,6 +10,6 @@ self: super: {
 
   nixops = super.nixops.overridePythonAttrs({ nativeBuildInputs ? [], ... }: {
     format = "pyproject";
-    nativeBuildInputs = nativeBuildInputs ++ [ self.poetry self.typeguard ];
+    nativeBuildInputs = nativeBuildInputs ++ [ self.poetry ];
   });
 }
