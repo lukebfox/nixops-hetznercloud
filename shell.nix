@@ -1,12 +1,9 @@
-{ pkgs ? import <nixpkgs> {} }:
-let
-  overrides = import ./overrides.nix { inherit pkgs; };
-in pkgs.mkShell {
-  buildInputs = [
-    (pkgs.poetry2nix.mkPoetryEnv {
-      projectDir = ./.;
-      overrides = pkgs.poetry2nix.overrides.withDefaults overrides;
-    })
-    pkgs.poetry
-  ];
-}
+(import (
+  let
+    lock = builtins.fromJSON (builtins.readFile ./flake.lock);
+  in fetchTarball {
+    url = "https://github.com/edolstra/flake-compat/archive/${lock.nodes.flake-compat.locked.rev}.tar.gz";
+    sha256 = lock.nodes.flake-compat.locked.narHash; }
+) {
+  src =  ./.;
+}).shellNix
