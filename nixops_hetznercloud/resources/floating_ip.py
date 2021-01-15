@@ -132,7 +132,7 @@ class FloatingIPState(HetznerCloudResourceState):
         if response.action:
             response.action.wait_until_finished()
 
-        self.resource_id = response.floating_ip
+        self.resource_id = response.floating_ip.id
         self.address = response.floating_ip.ip
         self.logger.log("IP address is {0}".format(self.address))
 
