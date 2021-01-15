@@ -49,16 +49,16 @@ let
     {
 
       imports = [ ./common-volume-options.nix ];
-      
+
       options = {
-        
+
         volume = mkOption {
           default = "";
           example = literalExample "resources.hetznerCloudVolumes.volume1";
           type = with types; either str (resource "hetznercloud-volume");
           apply = x: if builtins.isString x then x else "nixops-${uuid}-${x._name}";
           description = ''
-            Hetzner Cloud identifier of the disk to be mounted. This can 
+            Hetzner Cloud identifier of the disk to be mounted. This can
             be the name (e.g. ``volume1``) of a disk not managed by NixOps.
             It can also be a Volume resource (e.g. ``resources.hetznerCloudVolumes.db``).
           '';
@@ -80,7 +80,7 @@ let
         default = null;
         type = with types; (nullOr (submodule hetznerCloudDiskOptions));
         description = ''
-          Hetzner Cloud volume to be attached to this mount point. 
+          Hetzner Cloud volume to be attached to this mount point.
           This is shorthand for defining a separate
           ``deployment.hetznerCloud.volumes`` attribute entry.
         '';
@@ -146,7 +146,7 @@ in
 
     deployment.hetznerCloud.serverNetworks = mkOption {
       default = [];
-      example = literalExample '' 
+      example = literalExample ''
       [{
         network = resources.hetznerCloudNetworks.network1;
         privateIP = "10.1.0.2";
@@ -159,12 +159,12 @@ in
       default = [];
       example = "[resources.hetznerCloudFloatingIPs.fip1]";
       type = with types; listOf (either str (resource "hetznercloud-floating-ip"));
-      apply = map (x: if builtins.isString x then x else "nixops-" + uuid + "-" + x.name);
+      apply = map (x: if builtins.isString x then x else "nixops-" + uuid + "-" + x._name);
       description = ''
         Hetzner Cloud Floating IP address resources to bind to.
       '';
     };
-    
+
     deployment.hetznerCloud.labels = commonHetznerCloudOptions.labels;
 
     fileSystems = mkOption {
@@ -175,13 +175,13 @@ in
 
   ##### implementation
   config = mkIf (config.deployment.targetEnv == "hetznercloud") {
-    
+
     assertions = [
       { assertion = 3 >= length config.deployment.hetznerCloud.serverNetworks;
         message = "Hetzner Cloud Servers can only attach to up to three networks at once.";
       }
     ];
-    
+
     nixpkgs.system = mkOverride 900 "x86_64-linux";
     services.openssh.enable = true;
 
