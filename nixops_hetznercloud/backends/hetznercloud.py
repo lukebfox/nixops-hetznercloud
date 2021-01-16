@@ -837,6 +837,8 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             "sending ACPI shutdown request to {0}...".format(self.full_name)
         )
         self.wait_on_action(self.get_client().servers.shutdown(instance))
+        while not self._check_status("off"):
+            time.sleep(1)
         self.state = self.STOPPED
 
     def reboot(self, hard: bool = False) -> None:
@@ -860,6 +862,10 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
     def _check(self, res):
         if not self.vm_id:
             res.exists = False
+
+    def _check_status(self, status) -> bool:
+        instance = self.get_instance()
+        return instance.status == status
 
     def wait_on_action(self, action: BoundAction) -> None:
         while action.status == "running":
