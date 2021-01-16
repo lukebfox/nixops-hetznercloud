@@ -90,6 +90,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
     private_client_key = attr_property("hetznerCloud.privateClientKey", None)
     public_host_key = attr_property("hetznerCloud.publicHostKey", None)
     private_host_key = attr_property("hetznerCloud.privateHostKey", None)
+    legacy_if_scheme = attr_property("legacyIfScheme", None, bool)
     labels = attr_property("hetznerCloud.labels", {}, "json")
     location = attr_property("hetznerCloud.location", None)
     server_name = attr_property("hetznerCloud.serverName", None)
@@ -112,6 +113,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             self.public_client_key = None
             self.private_host_key = None
             self.public_host_key = None
+            self.legacy_if_scheme = None
             self.location = None
             self.server_name = None
             self.server_type = None
@@ -205,7 +207,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                 ipv6.append({"address": addr, "prefixLength": 64})
 
         def get_interface_name(i: int) -> str:
-            if self.server_type.startswith("cx"):
+            if self.legacy_if_scheme:
                 return "ens" + str(10 + i)
             else:
                 return "enp" + str(7 + i) + "s0"
@@ -229,7 +231,11 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                 "213.133.99.99",
                 "213.133.100.100",
             ],
-            ("networking", "interfaces", "ens3"): {
+            (
+                "networking",
+                "interfaces",
+                "ens3" if self.legacy_if_scheme else "enp1s0",
+            ): {
                 ("ipv4", "addresses"): ipv4,
                 ("ipv6", "addresses"): ipv6,
                 "useDHCP": True,
@@ -671,6 +677,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             self.public_ipv6 = response.server.public_net.ipv6.ip
             self.server_name = defn.server_name
             self.server_type = defn.server_type
+            self.legacy_if_scheme = defn.server_type.startswith("cx")
             self.location = defn.location
             self.labels = dict(defn.labels)
             self.private_host_key = None
@@ -834,6 +841,8 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             "sending ACPI shutdown request to {0}...".format(self.full_name)
         )
         self.wait_on_action(self.get_client().servers.shutdown(instance))
+        while not self._check_status("off"):
+            time.sleep(1)
         self.state = self.STOPPED
 
     def reboot(self, hard: bool = False) -> None:
@@ -857,6 +866,10 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
     def _check(self, res):
         if not self.vm_id:
             res.exists = False
+
+    def _check_status(self, status) -> bool:
+        instance = self.get_instance()
+        return instance.status == status
 
     def wait_on_action(self, action: BoundAction) -> None:
         while action.status == "running":
