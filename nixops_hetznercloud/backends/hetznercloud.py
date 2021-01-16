@@ -231,7 +231,11 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                 "213.133.99.99",
                 "213.133.100.100",
             ],
-            ("networking", "interfaces", "ens3" if self.legacy_if_scheme else "enp1s0"): {
+            (
+                "networking",
+                "interfaces",
+                "ens3" if self.legacy_if_scheme else "enp1s0",
+            ): {
                 ("ipv4", "addresses"): ipv4,
                 ("ipv6", "addresses"): ipv6,
                 "useDHCP": True,
