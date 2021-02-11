@@ -1,7 +1,7 @@
 { apiToken ? "changeme" }:
 {
-  network.description = "POC deployment";
-  
+  network.description = "Hetzner Cloud certificate example deployment";
+
   resources.hetznerCloudCertificates.my-ssl-cert = {
     inherit apiToken;
     certificate = ''
@@ -55,4 +55,3 @@ JzjAuZDiBsopM6mCdvw2IjUL3sSQt/bzsEsFyHuXvAqUe7IL6frY/w==
     '';
   };
 }
-  
