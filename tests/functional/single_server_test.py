@@ -2,7 +2,7 @@ from os.path import dirname
 from tests.functional import GenericDeploymentTest
 
 
-test_spec = "{0}/single_server_base.nix".format(dirname(__file__))
+test_spec = f"{dirname(__file__)}/single_server_base.nix"
 
 
 class SingleServerTest(GenericDeploymentTest):

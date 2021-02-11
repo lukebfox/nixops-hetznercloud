@@ -32,9 +32,6 @@ class NetworkDefinition(ResourceDefinition):
     def get_resource_type(cls):
         return "hetznerCloudNetworks"
 
-    def show_type(self):
-        return "{0}".format(self.get_type())
-
 
 class NetworkState(HetznerCloudResourceState):
     """
@@ -72,12 +69,11 @@ class NetworkState(HetznerCloudResourceState):
         )
 
     def show_type(self):
-        s = super(NetworkState, self).show_type()
-        return "{0}".format(s)
+        return f"{super(NetworkState, self).show_type()}"
 
     @property
     def full_name(self) -> str:
-        return "Hetzner Cloud Network {0}".format(self.resource_id)
+        return f"Hetzner Cloud Network {self.resource_id}"
 
     def prefix_definition(self, attr: Any) -> Dict[Sequence[str], Any]:
         return {("resources", "hetznerCloudNetworks"): attr}
@@ -97,7 +93,7 @@ class NetworkState(HetznerCloudResourceState):
     def _destroy(self) -> None:
         instance = self.get_instance()
         if instance is not None:
-            self.logger.log("destroying {0}...".format(self.full_name))
+            self.logger.log(f"destroying {self.full_name}...")
             instance.delete()
         self.cleanup_state()
 
@@ -108,16 +104,14 @@ class NetworkState(HetznerCloudResourceState):
         if self.state == self.UP:
             if not allow_recreate:
                 raise Exception(
-                    "{0} definition changed and it needs to be recreated "
-                    "use --allow-recreate if you want to create a new one".format(
-                        self.full_name
-                    )
+                    f"{self.full_name} definition changed and it needs to be "
+                    "recreated use --allow-recreate if you want to create a new one"
                 )
             self.warn("virtual network definition changed, recreating...")
             self._destroy()
             self._client = None
 
-        self.log_start("creating virtual network '{0}'...".format(name))
+        self.log_start(f"creating virtual network '{name}'...")
         self.resource_id = (
             self.get_client().networks.create(name=name, ip_range=defn.ipRange).id
         )
@@ -136,13 +130,13 @@ class NetworkState(HetznerCloudResourceState):
 
         for ip_range in prev_subnets - final_subnets:
             subnet = NetworkSubnet(ip_range, "cloud", "eu-central")
-            self.logger.log("deleting subnet {0}".format(ip_range))
             self.wait_on_action(self.get_instance().delete_subnet(subnet))
+            self.logger.log(f"deleting subnet {ip_range}")
 
         for ip_range in final_subnets - prev_subnets:
             subnet = NetworkSubnet(ip_range, "cloud", "eu-central")
-            self.logger.log("adding subnet {0}".format(ip_range))
             self.wait_on_action(self.get_instance().add_subnet(subnet))
+            self.logger.log(f"adding subnet {ip_range}")
 
         with self.depl._db:
             self._state["subnets"] = list(final_subnets)

@@ -27,9 +27,6 @@ class FloatingIPDefinition(ResourceDefinition):
     def get_resource_type(cls):
         return "hetznerCloudFloatingIPs"
 
-    def show_type(self):
-        return "{0}".format(self.get_type())
-
 
 class FloatingIPState(HetznerCloudResourceState):
     """
@@ -38,12 +35,12 @@ class FloatingIPState(HetznerCloudResourceState):
 
     definition_type = FloatingIPDefinition
 
-    address = attr_property("address", None)
-
     _resource_type = "floating_ips"
     _reserved_keys = HetznerCloudResourceState.COMMON_HCLOUD_RESERVED + [
         "address",
     ]
+
+    address = attr_property("address", None)
 
     @classmethod
     def get_type(cls):
@@ -66,17 +63,15 @@ class FloatingIPState(HetznerCloudResourceState):
         )
 
     def show_type(self):
-        s = super(FloatingIPState, self).show_type()
-        location = self._state.get("location", None)
+        s = f"{super(FloatingIPState, self).show_type()}"
         if self.state == self.UP:
-            s = "{0} [{1}]".format(s, location)
+            s += f" [{self._state.get('location', None}]"
         return s
 
     @property
     def full_name(self) -> str:
-        return "Hetzner Cloud Floating IP {0} [{1}]".format(
-            self.resource_id, self._state.get("address", None)
-        )
+        address = self._state.get("address", None)
+        return f"Hetzner Cloud Floating IP {self.resource_id} [{address}]"
 
     def prefix_definition(self, attr: Any) -> Dict[Sequence[str], Any]:
         return {("resources", "hetznerCloudFloatingIPs"): attr}
@@ -102,7 +97,7 @@ class FloatingIPState(HetznerCloudResourceState):
     def _destroy(self) -> None:
         instance = self.get_instance()
         if instance is not None:
-            self.logger.log("destroying {0}...".format(self.full_name))
+            self.logger.log(f"destroying {self.full_name}...")
             instance.delete()
         self.cleanup_state()
 
@@ -114,10 +109,8 @@ class FloatingIPState(HetznerCloudResourceState):
                 raise Exception("changing a floating IP's location isn't supported.")
             if not allow_recreate:
                 raise Exception(
-                    "{0} definition changed and it needs to be recreated "
-                    "use --allow-recreate if you want to create a new one".format(
-                        self.full_name
-                    )
+                    f"{self.full_name} definition changed and it needs to be "
+                    "recreated use --allow-recreate if you want to create a new one"
                 )
             self.warn("floating IP definition changed, recreating...")
             self._destroy()
@@ -125,7 +118,7 @@ class FloatingIPState(HetznerCloudResourceState):
 
         location = self.get_client().locations.get_by_name(defn.location)
 
-        self.logger.log("creating floating IP at {0}...".format(location.description))
+        self.logger.log(f"creating floating IP at {location.description}...")
         response = self.get_client().floating_ips.create(
             name=self.get_default_name(), type=defn.type, home_location=location,
         )
@@ -134,7 +127,7 @@ class FloatingIPState(HetznerCloudResourceState):
 
         self.resource_id = response.floating_ip.id
         self.address = response.floating_ip.ip
-        self.logger.log("IP address is {0}".format(self.address))
+        self.logger.log(f"IP address is {address}")
 
         with self.depl._db:
             self.state = self.STARTING
