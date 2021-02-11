@@ -12,7 +12,10 @@ from hcloud.actions.client import BoundAction
 from nixops.util import attr_property
 from nixops.resources import ResourceState, DiffEngineResourceState
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Type, TypeVar
+
+
+TypedResource = TypeVar("TypedResource")
 
 
 class HetznerCloudResourceState(DiffEngineResourceState):
