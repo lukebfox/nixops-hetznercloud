@@ -127,7 +127,7 @@ class FloatingIPState(HetznerCloudResourceState):
 
         self.resource_id = response.floating_ip.id
         self.address = response.floating_ip.ip
-        self.logger.log(f"IP address is {address}")
+        self.logger.log(f"IP address is {self.address}")
 
         with self.depl._db:
             self.state = self.STARTING
