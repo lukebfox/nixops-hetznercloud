@@ -244,7 +244,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         for i, v in enumerate(self.server_networks.values()):
             private_ipv4_addresses = [
                 {"address": addr, "prefixLength": 32}
-                for addr in [v["privateIP"]] + v["aliasIPs"]
+                for addr in [v["privateIpAddress"]] + v["aliasIpAddresses"]
             ]
             spec[("networking", "interfaces", get_interface_name(i))] = {
                 ("ipv4", "addresses"): private_ipv4_addresses,
@@ -320,7 +320,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                 def attach_to_network() -> bool:
                     try:
                         action = self.get_instance().attach_to_network(
-                            nw, x["privateIP"], x["aliasIPs"]
+                            nw, x["privateIpAddress"], x["aliasIpAddresses"]
                         )
                         self.wait_on_action(action)
                     except APIException as e:

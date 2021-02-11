@@ -26,14 +26,14 @@ let
             reachable on.
           '';
         };
-        privateIP = mkOption {
+        privateIpAddress = mkOption {
           example = "10.1.0.2";
           type = types.str;
           description = ''
             The Hetzner Cloud instance's private IP address for this network.
           '';
         };
-        aliasIPs = mkOption {
+        aliasIpAddresses = mkOption {
           default = [];
           example = [ "10.1.0.3" "10.1.0.4" "10.1.0.100" ];
           type = with types; listOf str;
