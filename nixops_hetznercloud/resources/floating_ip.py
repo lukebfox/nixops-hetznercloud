@@ -65,7 +65,7 @@ class FloatingIPState(HetznerCloudResourceState):
     def show_type(self):
         s = f"{super(FloatingIPState, self).show_type()}"
         if self.state == self.UP:
-            s += f" [{self._state.get('location', None}]"
+            s += f" [{self._state.get('location', None)}]"
         return s
 
     @property

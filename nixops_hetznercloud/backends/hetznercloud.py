@@ -629,10 +629,10 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         user_data = (
             "#cloud-config\n"
             "ssh_keys:\n"
-            f"  ed25519_public: {self.public_host_key}\n"
+            "  ed25519_public: {0}\n"
             "  ed25519_private: |\n"
-            f"    {self.private_host_key.replace('\n', '\n    ')}"
-        )
+            "    {1}"
+        ).format(self.public_host_key, self.private_host_key.replace("\n", "\n    "))
 
         self.logger.log_start(
             f"creating {defn.server_type} server at {location.description}..."
