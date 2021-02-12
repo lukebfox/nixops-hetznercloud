@@ -28,9 +28,6 @@ class SSHKeyDefinition(ResourceDefinition):
     def get_resource_type(cls):
         return "hetznerCloudSSHKeys"
 
-    def show_type(self):
-        return "{0}".format(self.get_type())
-
 
 class SSHKeyState(HetznerCloudResourceState):
     """
@@ -58,12 +55,11 @@ class SSHKeyState(HetznerCloudResourceState):
         )
 
     def show_type(self):
-        s = super(SSHKeyState, self).show_type()
-        return "{0}".format(s)
+        return f"{super(SSHKeyState, self).show_type()}"
 
     @property
     def full_name(self) -> str:
-        return "Hetzner Cloud SSH Key {0}".format(self.resource_id)
+        return f"Hetzner Cloud SSH Key {resource_id}"
 
     def prefix_definition(self, attr: Any) -> Dict[Sequence[str], Any]:
         return {("resources", "hetznerCloudSSHKeys"): attr}
@@ -82,7 +78,7 @@ class SSHKeyState(HetznerCloudResourceState):
     def _destroy(self) -> None:
         if self.state != self.UP:
             return
-        self.logger.log("destroying {0}...".format(self.full_name))
+        self.logger.log(f"destroying {full_name}...")
         self.get_instance().delete()
         self.cleanup_state()
 
@@ -96,16 +92,14 @@ class SSHKeyState(HetznerCloudResourceState):
         if self.state == self.UP:
             if not allow_recreate:
                 raise Exception(
-                    "{} definition changed and it needs to be recreated "
-                    "use --allow-recreate if you want to create a new one".format(
-                        self.full_name
-                    )
+                    f"{self.full_name} definition changed and it needs to be "
+                    "recreated use --allow-recreate if you want to create a new one"
                 )
             self.warn("ssh_key definition changed, recreating...")
             self._destroy()
             self._client = None
 
-        self.logger.log("creating ssh key '{}'...".format(name))
+        self.logger.log(f"creating ssh key '{name}'...")
         try:
             self.resource_id = (
                 self.get_client()
@@ -114,9 +108,7 @@ class SSHKeyState(HetznerCloudResourceState):
             )
         except APIException as e:
             if e.code == "invalid_input":
-                raise Exception(
-                    "couldn't create SSH Key Resource due to {}".format(e.message)
-                )
+                raise Exception(f"couldn't create SSH Key Resource: {e.message}")
             else:
                 raise e
 

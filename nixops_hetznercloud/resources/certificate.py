@@ -26,9 +26,6 @@ class CertificateDefinition(ResourceDefinition):
     def get_resource_type(cls):
         return "hetznerCloudCertificates"
 
-    def show_type(self):
-        return "{0}".format(self.get_type())
-
 
 class CertificateState(HetznerCloudResourceState):
     """
@@ -56,12 +53,11 @@ class CertificateState(HetznerCloudResourceState):
         )
 
     def show_type(self):
-        s = super(CertificateState, self).show_type()
-        return "{0}".format(s)
+        return f"{super(CertificateState, self).show_type()}"
 
     @property
     def full_name(self) -> str:
-        return "Hetzner Cloud Certificate {0}".format(self.resource_id)
+        return f"Hetzner Cloud Certificate {self.resource_id}"
 
     def prefix_definition(self, attr: Any) -> Dict[Sequence[str], Any]:
         return {("resources", "hetznerCloudCertificates"): attr}
@@ -80,7 +76,7 @@ class CertificateState(HetznerCloudResourceState):
     def _destroy(self) -> None:
         instance = self.get_instance()
         if instance is not None:
-            self.logger.log("destroying {0}...".format(self.full_name))
+            self.logger.log(f"destroying {self.full_name}...")
             instance.delete()
         self.cleanup_state()
 
@@ -92,17 +88,15 @@ class CertificateState(HetznerCloudResourceState):
         if self.state == self.UP:
             if not allow_recreate:
                 raise Exception(
-                    "{0} definition changed and it needs to be recreated "
-                    "use --allow-recreate if you want to create a new one".format(
-                        self.full_name
-                    )
+                    f"{self.full_name} definition changed and it needs to be"
+                    "recreated use --allow-recreate if you want to create a new one"
                 )
             self.warn("certificate definition changed, recreating...")
             self._destroy()
             self._client = None
 
         name = self.get_default_name()
-        self.logger.log("creating certificate '{}'...".format(name))
+        self.logger.log("creating certificate '{name}'...")
         bound_certificate = self.get_client().certificates.create(
             name=name, certificate=defn.certificate, private_key=defn.privateKey,
         )

@@ -30,9 +30,6 @@ class VolumeDefinition(ResourceDefinition):
     def get_resource_type(cls):
         return "hetznerCloudVolumes"
 
-    def show_type(self):
-        return "{0}".format(self.get_type())
-
 
 class VolumeState(HetznerCloudResourceState):
     """
@@ -69,18 +66,17 @@ class VolumeState(HetznerCloudResourceState):
         )
 
     def show_type(self):
-        s = super(VolumeState, self).show_type()
+        s = f"{super(VolumeState, self).show_type()}"
         if self.state == self.UP:
-            s = "{0} [{1}; {2} GiB]".format(
-                s, self._state["location"], self._state["size"]
-            )
+            location = self._state["location"]
+            size = self._state["size"]
+            s += f" [{location}; {size}GiB]"
         return s
 
     @property
     def full_name(self) -> str:
-        return "Hetzner Cloud Volume {0} [{1}]".format(
-            self.resource_id, self._state.get("location", None)
-        )
+        location = self._state.get("location", None)
+        return f"Hetzner Cloud Volume {self.resource_id} [{location}]"
 
     def prefix_definition(self, attr: Any) -> Dict[Sequence[str], Any]:
         return {("resources", "hetznerCloudVolumes"): attr}
@@ -102,7 +98,7 @@ class VolumeState(HetznerCloudResourceState):
         instance = self.get_instance()
 
         def detach_volume() -> bool:
-            self.logger.log("detaching {0}...".format(self.full_name))
+            self.logger.log(f"detaching {self.full_name}...")
             try:
                 instance.detach().wait_until_finished()
             except APIException as e:
@@ -114,7 +110,7 @@ class VolumeState(HetznerCloudResourceState):
                 return True
 
         def destroy_volume() -> bool:
-            self.logger.log("destroying {0}...".format(self.full_name))
+            self.logger.log(f"destroying {self.full_name}...")
             try:
                 instance.delete()
             except APIException as e:
@@ -143,10 +139,8 @@ class VolumeState(HetznerCloudResourceState):
                 raise Exception("reformatting a volume isn't supported.")
             if not allow_recreate:
                 raise Exception(
-                    "{0} definition changed and it needs to be recreated "
-                    "use --allow-recreate if you want to create a new one".format(
-                        self.full_name
-                    )
+                    f"{self.full_name} definition changed and it needs to be "
+                    "recreated use --allow-recreate if you want to create a new one"
                 )
             self.warn("volume definition changed, recreating...")
             self._destroy()
@@ -156,7 +150,7 @@ class VolumeState(HetznerCloudResourceState):
         name = self.get_default_name()
 
         self.logger.log(
-            "creating {0}GB volume at {1}...".format(defn.size, location.description)
+            f"creating {defn.size}GB volume at {location.description}..."
         )
         try:
             response = self.get_client().volumes.create(
@@ -168,7 +162,7 @@ class VolumeState(HetznerCloudResourceState):
         except ActionFailedException:
             raise Exception(
                 "Failed to create Hetzner Cloud volume resource "
-                "with following error: {0}".format(response.action.error)
+                f"with following error: {response.action.error}"
             )
         except ActionTimeoutException:
             raise Exception(
@@ -191,7 +185,7 @@ class VolumeState(HetznerCloudResourceState):
             raise Exception("decreasing a volume's size isn't supported.")
         elif size < defn.size:
             self.logger.log(
-                "increasing volume size from {0} GiB to {1} GiB".format(size, defn.size)
+                f"increasing volume size from {size} GiB to {defn.size} GiB"
             )
 
             self.get_instance().resize(defn.size).wait_until_finished()
@@ -201,8 +195,8 @@ class VolumeState(HetznerCloudResourceState):
                 self.needsFSResize = True
 
     def destroy(self, wipe: bool = False) -> bool:
-        question = "are you sure you want to destroy {0}?"
-        if not self.depl.logger.confirm(question.format(self.full_name)):
+        question = f"are you sure you want to destroy {self.full_name}?"
+        if not self.depl.logger.confirm(question):
             return False
         self._destroy()
         return True

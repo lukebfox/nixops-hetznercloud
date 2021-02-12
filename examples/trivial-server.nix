@@ -4,7 +4,7 @@
   network.description = "Hetzner Cloud trivial server deployment";
 
   machine1 =
-    { config, ... }:
+    { ... }:
     {
       deployment.targetEnv = "hetznercloud";
       deployment.hetznerCloud = {

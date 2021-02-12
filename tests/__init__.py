@@ -26,7 +26,7 @@ def destroy(sf, uuid):
     except Exception:
         pass
     depl.delete()
-    depl.logger.log("deployment ‘{0}’ destroyed".format(uuid))
+    depl.logger.log(f"deployment ‘{uuid}’ destroyed")
 
 
 def teardown():

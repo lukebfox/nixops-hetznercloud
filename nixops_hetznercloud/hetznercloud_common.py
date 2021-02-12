@@ -12,7 +12,10 @@ from hcloud.actions.client import BoundAction
 from nixops.util import attr_property
 from nixops.resources import ResourceState, DiffEngineResourceState
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Type, TypeVar
+
+
+TypedResource = TypeVar("TypedResource")
 
 
 class HetznerCloudResourceState(DiffEngineResourceState):
@@ -50,14 +53,21 @@ class HetznerCloudResourceState(DiffEngineResourceState):
         return labels
 
     def get_default_name(self) -> str:
-        return "nixops-{0}-{1}".format(self.depl.uuid, self.name)
+        return f"nixops-{self.depl.uuid}-{self.name}"
 
     def get_default_name_label(self) -> str:
-        return "{0} [{1}]".format(self.depl.description, self.name)
+        return f"{self.depl.description} [{self.name}]"
 
     @property
     def full_name(self) -> str:
         raise NotImplementedError
+
+    def get_hetznercloud_resource(
+        self, name: str, type_name: str, type: Type[TypedResource]
+    ) -> TypedResource:
+        if name.startswith("nixops-" + self.depl.uuid):
+            name = name.split("-")[6]
+        return self.depl.get_typed_resource(name, type_name, type)
 
     def get_instance(self) -> Any:
         try:
@@ -95,8 +105,8 @@ class HetznerCloudResourceState(DiffEngineResourceState):
 
     def realise_modify_labels(self, allow_recreate: bool) -> None:
         defn = self.get_defn().config
-        self.logger.log("updating labels for {0}".format(self.full_name))
 
+        self.logger.log(f"updating labels for {self.full_name}")
         self.get_instance().update(
             labels={**self.get_common_labels(), **dict(defn.labels)}
         )
@@ -128,7 +138,7 @@ class HetznerCloudResourceState(DiffEngineResourceState):
             action = self.get_client().actions.get_by_id(action.id)
         self.logger.log_end("")
         if action.status != "success":
-            raise Exception("unexpected status: {0}".format(action.status))
+            raise Exception(f"unexpected status: {action.status}")
 
     def cleanup_state(self) -> None:
         """Discard all state pertaining to an instance"""
@@ -140,8 +150,8 @@ class HetznerCloudResourceState(DiffEngineResourceState):
         instance = self.get_instance()
         if instance is None:
             self.warn(
-                "{0} was deleted from outside nixops;"
-                "it needs to be recreated...".format(self.full_name)
+                f"{self.full_name} was deleted from outside nixops;"
+                "it needs to be recreated..."
             )
             self.cleanup_state()
         elif self.state == self.STARTING:

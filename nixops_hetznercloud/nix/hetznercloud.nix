@@ -26,14 +26,14 @@ let
             reachable on.
           '';
         };
-        privateIP = mkOption {
+        privateIpAddress = mkOption {
           example = "10.1.0.2";
           type = types.str;
           description = ''
             The Hetzner Cloud instance's private IP address for this network.
           '';
         };
-        aliasIPs = mkOption {
+        aliasIpAddresses = mkOption {
           default = [];
           example = [ "10.1.0.3" "10.1.0.4" "10.1.0.100" ];
           type = with types; listOf str;
@@ -135,7 +135,12 @@ in
 
     deployment.hetznerCloud.volumes = mkOption {
       default = [ ];
-      #example = [ { volume = "volume1"; } ]; TODO
+      example = literalExample ''
+        [{
+          volume = "volume1";
+          mountPoint = "/mnt";
+        }];
+        '';
       type = with types; listOf (submodule hetznerCloudDiskOptions);
       description = ''
         List of attached Volumes. ``fileSystems`` attributes which contain
@@ -177,7 +182,7 @@ in
   config = mkIf (config.deployment.targetEnv == "hetznercloud") {
 
     assertions = [
-      { assertion = 3 >= length config.deployment.hetznerCloud.serverNetworks;
+      { assertion = length config.deployment.hetznerCloud.serverNetworks <= 3;
         message = "Hetzner Cloud Servers can only attach to up to three networks at once.";
       }
     ];

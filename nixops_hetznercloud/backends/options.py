@@ -1,14 +1,12 @@
 from nixops.backends import MachineOptions
 from nixops.resources import ResourceOptions
-from typing import Mapping
-from typing import Optional
-from typing import Sequence
+from typing import Mapping, Optional, Sequence
 
 
 class ServerNetworkOptions(ResourceOptions):
     network: str
-    privateIP: str
-    aliasIPs: Sequence[str]
+    privateIpAddress: str
+    aliasIpAddresses: Sequence[str]
 
 
 class DiskOptions(ResourceOptions):

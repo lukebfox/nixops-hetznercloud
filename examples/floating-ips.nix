@@ -4,7 +4,7 @@
   network.description = "Hetzner Cloud floating IP example deployment";
 
   machine1 =
-    { config, resources, ... }:
+    { resources, ... }:
     {
       deployment.targetEnv = "hetznercloud";
       deployment.hetznerCloud = {
@@ -23,9 +23,9 @@
   resources.hetznerCloudFloatingIPs.fip1 = { inherit apiToken location; };
 
   # Floating IPs can be created and not assigned to any server, useful if you
-  # bring down your servers but still want to hang on to the address for later.
+  # bring down your servers but still want to hang on to the address.
   resources.hetznerCloudFloatingIPs.fip3 = {
-    inherit apiToken location; 
+    inherit apiToken location;
     description = "Rainy day floating IP";
     type = "ipv4";
   };

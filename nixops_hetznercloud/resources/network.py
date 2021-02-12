@@ -2,19 +2,18 @@
 
 # Automatic provisioning of Hetzner Cloud Networks.
 
-from hcloud.networks.domain import NetworkSubnet, NetworkRoute
-
+from hcloud.networks.domain import (
+    Network,
+    NetworkSubnet,
+    NetworkRoute
+)
 from nixops.diff import Handler
 from nixops.resources import ResourceDefinition
 from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
 
-from typing import Any, Dict, Sequence, Tuple
+from typing import Any, Dict, Sequence
 
 from .types.network import NetworkOptions, RouteOptions
-
-
-def hashable(x: RouteOptions) -> Tuple[str, str]:
-    return x.destination, x.gateway
 
 
 class NetworkDefinition(ResourceDefinition):
@@ -31,9 +30,6 @@ class NetworkDefinition(ResourceDefinition):
     @classmethod
     def get_resource_type(cls):
         return "hetznerCloudNetworks"
-
-    def show_type(self):
-        return "{0}".format(self.get_type())
 
 
 class NetworkState(HetznerCloudResourceState):
@@ -72,12 +68,11 @@ class NetworkState(HetznerCloudResourceState):
         )
 
     def show_type(self):
-        s = super(NetworkState, self).show_type()
-        return "{0}".format(s)
+        return f"{super(NetworkState, self).show_type()}"
 
     @property
     def full_name(self) -> str:
-        return "Hetzner Cloud Network {0}".format(self.resource_id)
+        return f"Hetzner Cloud Network {self.resource_id}"
 
     def prefix_definition(self, attr: Any) -> Dict[Sequence[str], Any]:
         return {("resources", "hetznerCloudNetworks"): attr}
@@ -97,7 +92,7 @@ class NetworkState(HetznerCloudResourceState):
     def _destroy(self) -> None:
         instance = self.get_instance()
         if instance is not None:
-            self.logger.log("destroying {0}...".format(self.full_name))
+            self.logger.log(f"destroying {self.full_name}...")
             instance.delete()
         self.cleanup_state()
 
@@ -108,16 +103,14 @@ class NetworkState(HetznerCloudResourceState):
         if self.state == self.UP:
             if not allow_recreate:
                 raise Exception(
-                    "{0} definition changed and it needs to be recreated "
-                    "use --allow-recreate if you want to create a new one".format(
-                        self.full_name
-                    )
+                    f"{self.full_name} definition changed and it needs to be "
+                    "recreated use --allow-recreate if you want to create a new one"
                 )
             self.warn("virtual network definition changed, recreating...")
             self._destroy()
             self._client = None
 
-        self.log_start("creating virtual network '{0}'...".format(name))
+        self.log_start(f"creating virtual network '{name}'...")
         self.resource_id = (
             self.get_client().networks.create(name=name, ip_range=defn.ipRange).id
         )
@@ -131,39 +124,61 @@ class NetworkState(HetznerCloudResourceState):
     def realise_modify_subnets(self, allow_recreate: bool) -> None:
         defn: NetworkOptions = self.get_defn().config
 
-        prev_subnets = set(self._state.get("subnets", []))
+        prev_subnets = set(self._state.get("subnets", ()))
         final_subnets = set(defn.subnets)
 
         for ip_range in prev_subnets - final_subnets:
-            subnet = NetworkSubnet(ip_range, "cloud", "eu-central")
-            self.logger.log("deleting subnet {0}".format(ip_range))
-            self.wait_on_action(self.get_instance().delete_subnet(subnet))
+            self.logger.log(f"deleting subnet {ip_range}")
+            self.wait_on_action(
+                self.get_client().networks.delete_subnet(
+                    network=Network(self.resource_id),
+                    subnet=NetworkSubnet(ip_range, "cloud", "eu-central")
+                )
+            )
 
         for ip_range in final_subnets - prev_subnets:
-            subnet = NetworkSubnet(ip_range, "cloud", "eu-central")
-            self.logger.log("adding subnet {0}".format(ip_range))
-            self.wait_on_action(self.get_instance().add_subnet(subnet))
+            self.logger.log(f"adding subnet {ip_range}")
+            self.wait_on_action(
+                self.get_client().networks.add_subnet(
+                    network=Network(self.resource_id),
+                    subnet=NetworkSubnet(ip_range, "cloud", "eu-central")
+                )
+            )
 
         with self.depl._db:
-            self._state["subnets"] = list(final_subnets)
+            self._state["subnets"] = list(defn.subnets)
 
     def realise_modify_routes(self, allow_recreate: bool) -> None:
         defn: NetworkOptions = self.get_defn().config
 
-        instance = self.get_instance()
-        prev_routes = set(map(tuple, self._state.get("routes", [])))
-        final_routes = set(map(hashable, defn.routes))
+        # workaround to get hashable types
+        # TODO patch nixops StateDict getter for dicts (if appropriate)
+        prev_routes = { RouteOptions(**x) for x in self._state.get("routes", ()) }
+        final_routes = set(defn.routes)
 
-        for d1, g1 in prev_routes - final_routes:
-            self.logger.log("deleting route for {0}".format(g1))
-            self.wait_on_action(instance.delete_route(NetworkRoute(d1, g1)))
+        for route in prev_routes - final_routes:
+            self.logger.log(f"deleting route for {route.gateway}")
+            self.wait_on_action(
+                self.get_client().networks.delete_route(
+                    network=Network(self.resource_id),
+                    route=NetworkRoute(route.destination, route.gateway)
+                )
+            )
 
-        for d2, g2 in final_routes - prev_routes:
-            self.logger.log("adding route to {0}".format(g2))
-            self.wait_on_action(instance.add_route(NetworkRoute(d2, g2)))
+        for route in final_routes - prev_routes:
+            self.logger.log(f"adding route to {route.gateway}")
+            self.wait_on_action(
+                self.get_client().networks.add_route(
+                    network=Network(self.resource_id),
+                    route=NetworkRoute(route.destination, route.gateway)
+                )
+            )
 
+        # Why must we insert as a list when the original type (tuple) is json encodable?
+        # StateDict setter accepts inserting lists and dicts for legacy reasons.
+        # TODO patch nixops to encode tuples (in addition, for backwards compat)
         with self.depl._db:
-            self._state["routes"] = list(final_routes)
+            self._state["routes"] = list(defn.routes)
 
     def destroy(self, wipe: bool = False) -> bool:
         self._destroy()

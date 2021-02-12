@@ -31,7 +31,7 @@ with lib;
         Choices are ``nbg1``, ``fsn1`` or ``hel1``.
       '';
     };
-    
+
     address = mkOption {
       default = "";
       type = types.str;
