@@ -92,7 +92,7 @@ class HetznerCloudResourceState(DiffEngineResourceState):
             self.get_defn().config.apiToken
             if self.name in (self.depl.definitions or [])
             else None  # type: ignore
-        ) or os.environ.get("HCLOUD_API_TOKEN")
+        ) or os.environ.get("HCLOUD_API_TOKEN", None)
 
         if new_api_token is not None:
             self.api_token = new_api_token
@@ -117,8 +117,7 @@ class HetznerCloudResourceState(DiffEngineResourceState):
     def wait_for_resource_available(
         self, resource_id: str, resource_type: Optional[str] = None
     ) -> None:
-        if resource_type is None:
-            resource_type = self._resource_type
+        resource_type = resource_type or self._resource_type
         while True:
             res = getattr(self.get_client(), resource_type).get_by_id(resource_id)
             if res.created is None:
@@ -147,8 +146,7 @@ class HetznerCloudResourceState(DiffEngineResourceState):
     def _check(self) -> None:
         if self.resource_id is None:
             return
-        instance = self.get_instance()
-        if instance is None:
+        if self.get_instance() is None:
             self.warn(
                 f"{self.full_name} was deleted from outside nixops;"
                 "it needs to be recreated..."
@@ -158,8 +156,7 @@ class HetznerCloudResourceState(DiffEngineResourceState):
             self.wait_for_resource_available(self.resource_id)
 
     def _destroy(self) -> None:
-        instance = self.get_instance()
-        if instance is not None:
+        if (instance := self.get_instance()) is not None:
             self.logger.log(f"destroying {self.full_name}...")
             instance.delete()
         self.cleanup_state()

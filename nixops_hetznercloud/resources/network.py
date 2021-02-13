@@ -121,7 +121,7 @@ class NetworkState(HetznerCloudResourceState):
             self.wait_on_action(
                 self.get_client().networks.delete_subnet(
                     network=Network(self.resource_id),
-                    subnet=NetworkSubnet(ip_range, "cloud", "eu-central")
+                    subnet=NetworkSubnet(ip_range, "cloud", "eu-central"),
                 )
             )
 
@@ -130,7 +130,7 @@ class NetworkState(HetznerCloudResourceState):
             self.wait_on_action(
                 self.get_client().networks.add_subnet(
                     network=Network(self.resource_id),
-                    subnet=NetworkSubnet(ip_range, "cloud", "eu-central")
+                    subnet=NetworkSubnet(ip_range, "cloud", "eu-central"),
                 )
             )
 
@@ -150,7 +150,7 @@ class NetworkState(HetznerCloudResourceState):
             self.wait_on_action(
                 self.get_client().networks.delete_route(
                     network=Network(self.resource_id),
-                    route=NetworkRoute(route.destination, route.gateway)
+                    route=NetworkRoute(route.destination, route.gateway),
                 )
             )
 
@@ -159,7 +159,7 @@ class NetworkState(HetznerCloudResourceState):
             self.wait_on_action(
                 self.get_client().networks.add_route(
                     network=Network(self.resource_id),
-                    route=NetworkRoute(route.destination, route.gateway)
+                    route=NetworkRoute(route.destination, route.gateway),
                 )
             )
 

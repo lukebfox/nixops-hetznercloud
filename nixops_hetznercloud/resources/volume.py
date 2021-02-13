@@ -124,7 +124,7 @@ class VolumeState(HetznerCloudResourceState):
                 return True
 
         if instance is not None:
-            # can't trust api for volume attach status, have to check it manually
+            # can't trust api for volume attach status, have to check server api
             if instance.server and self.get_client().servers.get_by_id(instance.server):
                 check_wait(detach_volume)
             check_wait(destroy_volume)

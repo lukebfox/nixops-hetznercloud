@@ -16,6 +16,7 @@ from hcloud.floating_ips.client import BoundFloatingIP
 from hcloud.locations.client import BoundLocation
 from hcloud.networks.client import BoundNetwork
 from hcloud.servers.client import BoundServer
+from hcloud.servers.domain import Server
 from hcloud.server_types.domain import ServerType
 from hcloud.ssh_keys.client import BoundSSHKey
 from hcloud.volumes.client import BoundVolume
@@ -269,14 +270,15 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         """
         Detects and corrects any virtual network state desynchronisation.
         """
-        instance = self.get_instance()
 
-        attached = [x.network.id for x in instance.private_net]
+        attached: Set[str] = {x.network.id for x in self.get_instance().private_net}
+
+        # Detach server from networks
         for name in self.server_networks.keys():
-            network: BoundNetwork = self.get_client().networks.get_by_name(name)
+            nw: Optional[BoundNetwork] = self.get_client().networks.get_by_name(name)
 
             # Detect destroyed networks
-            if network is None:
+            if nw is None:
                 if name not in defn.server_networks:  # we dont need it
                     self.logger.warn(
                         f"forgetting about network ‘{name}’ that no longer exists"
@@ -289,21 +291,25 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                         " run ‘nixops deploy --check’ to update resource state"
                     )
             # Detect network detachment
-            elif network.id not in attached:
+            elif nw.id not in attached:
                 self.logger.warn(
-                    f"instance was manually detached from network ‘{name}’ [{network.id}]"
+                    f"instance was manually detached from network ‘{name}’ [{nw.id}]"
                 )
                 if name in defn.server_networks:
                     self._update_attr("server_networks", name, None)
             # Detach from existing networks if required.
             elif name not in defn.server_networks:
-                self.logger.log(f"detaching from network ‘{name}’ [{network.id}]")
-                instance.detach_from_network(network).wait_until_finished()
+                self.logger.log(f"detaching from network ‘{name}’ [{nw.id}]")
+                self.get_client().servers.detach_from_network(
+                    server=Server(self.vm_id), network=nw
+                ).wait_until_finished()
                 self._update_attr("server_networks", name, None)
 
+        # Attach server to networks
         for name, x in defn.server_networks.items():
             if name not in self.server_networks:
                 nw = self.get_client().networks.get_by_name(name)
+
                 if nw is None:
                     raise Exception(
                         f"tried to attach instance to network ‘{name}’"
@@ -314,10 +320,14 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                 # network attachment to deal with resource conflict.
                 def attach_to_network() -> bool:
                     try:
-                        action = self.get_instance().attach_to_network(
-                            nw, x["privateIpAddress"], x["aliasIpAddresses"]
+                        self.wait_on_action(
+                            self.get_client().servers.attach_to_network(
+                                server=Server(self.vm_id),
+                                network=nw,
+                                ip=x["privateIpAddress"],
+                                alias_ips=x["aliasIpAddresses"],
+                            )
                         )
-                        self.wait_on_action(action)
                     except APIException as e:
                         if e.code == "conflict":
                             return False
@@ -336,11 +346,15 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         """
         Detects and corrects any floating IP state desynchronisation.
         """
-        instance = self.get_instance()
 
-        assigned: Set[str] = {x.name for x in instance.public_net.floating_ips}
+        assigned: Set[str] = {
+            x.name for x in self.get_instance().public_net.floating_ips
+        }
+
         for name in self.ip_addresses.keys():
-            fip: BoundFloatingIP = self.get_client().floating_ips.get_by_name(name)
+            fip: Optional[BoundFloatingIP] = self.get_client().floating_ips.get_by_name(
+                name
+            )
 
             # Detect manually destroyed floating IPs
             if fip is None:
@@ -352,7 +366,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                     )
                     self._update_attr("ip_addresses", name, None)
                 else:
-                    if name.startswith("nixops-"):
+                    if name.startswith("nixops-" + self.depl.uuid):
                         raise Exception(
                             f"floating IP ‘{name}’ (used by {self.full_name})"
                             " no longer exists; run ‘nixops deploy --check’"
@@ -388,8 +402,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                         " but it doesn't exist..."
                     )
                 self.logger.log(f"assigning floating IP ‘{name}’ [{fip.id}]...")
-                action = fip.assign(self.get_instance())
-                self.wait_on_action(action)
+                self.wait_on_action(fip.assign(Server(self.vm_id)))
                 self._update_attr("ip_addresses", name, fip.ip)
 
     def _handle_changed_volumes(
@@ -400,8 +413,9 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         """
 
         attached: Set[str] = {x.name for x in self.get_instance().volumes}
+
         for name in self.volumes.keys():
-            volume: BoundVolume = self.get_client().volumes.get_by_name(name)
+            volume: Optional[BoundVolume] = self.get_client().volumes.get_by_name(name)
 
             # Detect destroyed volumes.
             if volume is None:
@@ -411,7 +425,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                         " and is no longer needed by the deployment specification"
                     )
                 else:
-                    if name.startswith("nixops-"):
+                    if name.startswith("nixops-" + self.depl.uuid):
                         raise Exception(
                             f"volume ‘{name}’ (used by {self.full_name}) no longer exists;"
                             " run ‘nixops deploy --check’ to update resource state"
@@ -449,8 +463,8 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
 
                 # Check if it exists. resources will have been created if user ran check,
                 # but prexisting vols which got deleted may be gone (detected in code above)
-
                 volume = self.get_client().volumes.get_by_name(name)
+
                 if volume is None:
                     self.logger.warn(
                         f"tried to attach non-NixOps managed volume ‘{name}’,"
@@ -479,15 +493,14 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                 # Attach volume.
 
                 self.logger.log(f"attaching volume ‘{name}’ [{volume.id}]... ")
-                volume.attach(self.get_instance()).wait_until_finished()
+                volume.attach(Server(self.vm_id)).wait_until_finished()
 
                 # Wait until the device is visible in the instance.
 
                 v["device"] = self.get_udev_name(volume.id)
 
                 def check_device() -> bool:
-                    res = self.run_command(f"test -e {v['device']}", check=False)
-                    return res == 0
+                    return 0 == self.run_command(f"test -e {v['device']}", check=False)
 
                 if not check_wait(
                     check_device, initial=1, max_tries=10, exception=False
@@ -564,11 +577,11 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                     f"volume {name} was resized, do you wish to grow its"
                     " filesystem to fill the space?"
                 )
-                op = f"xfs_growfs {v['mountPoint']}"
                 if (
                     res.needsFSResize
                     and self.depl.logger.confirm(question)
-                    and self.run_command(op, check=False) == 0
+                    and 0
+                    == self.run_command(f"xfs_growfs {v['mountPoint']}", check=False)
                 ):
                     with res.depl._db:
                         res.needsFSResize = False
@@ -588,7 +601,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         """Create or get a hetzner cloud ssh key."""
         public_key = public_key.strip()
         hetzner_ssh_keys: List[BoundSSHKey] = self.get_client().ssh_keys.get_all()
-        name = f"nixops-{self.depl.uuid}-{self.name}"
+        name: str = f"nixops-{self.depl.uuid}-{self.name}"
         for key in hetzner_ssh_keys:
             if key.public_key.strip() == public_key:
                 return key
@@ -764,15 +777,14 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
     def _destroy(self) -> None:
         if self.state != self.UP:
             return
-        self.logger.log(f"destroying {self.full_name}...")
+        self.logger.log(f"destroying {self.full_name}")
 
         # Detach volumes
         for name, v in self.volumes.items():
             self.logger.log(f"detaching volume {name}...")
             self.get_client().volumes.get_by_name(name).detach().wait_until_finished()
 
-        instance = self.get_instance()
-        if instance is not None:
+        if (instance := self.get_instance()) is not None:
             instance.delete()
 
         # Remove host ssh key.
@@ -792,9 +804,8 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         return True
 
     def start(self) -> None:
-        instance = self.get_instance()
         self.logger.log_start(f"powering on {self.full_name}...")
-        self.wait_on_action(self.get_client().servers.power_on(instance))
+        self.wait_on_action(self.get_client().servers.power_on(Server(self.vm_id)))
         self.wait_for_ssh()
         self.state = self.UP
 
@@ -802,9 +813,8 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         question = f"are you sure you want to stop {self.full_name}?"
         if not self.depl.logger.confirm(question):
             return
-        instance = self.get_instance()
         self.logger.log_start(f"sending ACPI shutdown request to {self.full_name}...")
-        self.wait_on_action(self.get_client().servers.shutdown(instance))
+        self.wait_on_action(self.get_client().servers.shutdown(Server(self.vm_id)))
         while not self._check_status("off"):
             time.sleep(1)
         self.state = self.STOPPED
@@ -813,13 +823,12 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         question = f"are you sure you want to reboot {self.full_name}?"
         if self.state == self.UP and not self.depl.logger.confirm(question):
             return
-        instance = self.get_instance()
         if hard:
             self.logger.log_start(f"sending hard reset to {self.full_name}...")
-            self.wait_on_action(self.get_client().servers.reset(instance))
+            self.wait_on_action(self.get_client().servers.reset(Server(self.vm_id)))
         else:
             self.logger.log_start(f"sending ACPI reboot request to {self.full_name}...")
-            self.wait_on_action(self.get_client().servers.reboot(instance))
+            self.wait_on_action(self.get_client().servers.reboot(Server(self.vm_id)))
         self.wait_for_ssh()
         self.state = self.UP
 
@@ -828,8 +837,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             res.exists = False
 
     def _check_status(self, status) -> bool:
-        instance = self.get_instance()
-        return instance.status == status
+        return status == self.get_instance().status
 
     def wait_on_action(self, action: BoundAction) -> None:
         while action.status == "running":
