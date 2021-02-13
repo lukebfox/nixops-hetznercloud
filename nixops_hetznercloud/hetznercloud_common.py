@@ -34,18 +34,22 @@ class HetznerCloudResourceState(DiffEngineResourceState):
         self.resource_id = None
         self._client = None
 
+    @property
+    def full_name(self) -> str:
+        raise NotImplementedError
+
     def get_physical_spec(self) -> Dict[str, Any]:
         return {"resourceId": self.resource_id}
 
     def get_common_labels(self) -> Dict[str, str]:
-        labels = {
+        labels: Dict[str, str] = {
             "CharonNetworkUUID": self.depl.uuid,
             "CharonInstanceName": self.name,
             "CharonStateFileHost": socket.gethostname(),
             "CharonStateFileUser": getpass.getuser(),
         }
         pattern = "^$|(?i)((?=^[a-z0-9])[a-z0-9._-]{0,63}[a-z0-9]$)"
-        file_name = os.path.basename(self.depl._db.db_file)
+        file_name: str = os.path.basename(self.depl._db.db_file)
         if re.match(pattern, file_name):
             labels["CharonStateFileName"] = file_name
         if self.depl.name:
@@ -57,10 +61,6 @@ class HetznerCloudResourceState(DiffEngineResourceState):
 
     def get_default_name_label(self) -> str:
         return f"{self.depl.description} [{self.name}]"
-
-    @property
-    def full_name(self) -> str:
-        raise NotImplementedError
 
     def get_hetznercloud_resource(
         self, name: str, type_name: str, type: Type[TypedResource]
@@ -115,9 +115,9 @@ class HetznerCloudResourceState(DiffEngineResourceState):
             self._state["labels"] = dict(defn.labels)
 
     def wait_for_resource_available(
-        self, resource_id: str, resource_type: str = ""
+        self, resource_id: str, resource_type: Optional[str] = None
     ) -> None:
-        if resource_type == "":
+        if resource_type is None:
             resource_type = self._resource_type
         while True:
             res = getattr(self.get_client(), resource_type).get_by_id(resource_id)
@@ -156,3 +156,14 @@ class HetznerCloudResourceState(DiffEngineResourceState):
             self.cleanup_state()
         elif self.state == self.STARTING:
             self.wait_for_resource_available(self.resource_id)
+
+    def _destroy(self) -> None:
+        instance = self.get_instance()
+        if instance is not None:
+            self.logger.log(f"destroying {self.full_name}...")
+            instance.delete()
+        self.cleanup_state()
+
+    def destroy(self, wipe: bool = False) -> bool:
+        self._destroy()
+        return True

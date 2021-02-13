@@ -70,6 +70,7 @@ class HetznerCloudDefinition(MachineDefinition):
     def show_type(self):
         return f"{self.get_type()} [{self.location or '???'}]"
 
+
 class HetznerCloudState(MachineState[HetznerCloudDefinition]):
     """
     State of a Hetzner Cloud machine.
@@ -136,9 +137,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             return self.get_client().servers.get_by_id(self.vm_id)
         except APIException as e:
             if e.code == "not_found":
-                self.logger.warn(
-                    f"{self.full_name} was deleted from outside of nixops"
-                )
+                self.logger.warn(f"{self.full_name} was deleted from outside of nixops")
                 return None
             else:
                 raise
@@ -177,9 +176,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
 
     def get_ssh_name(self) -> str:
         if not self.public_ipv4:
-            raise Exception(
-                f"{self.full_name} does not have a public IP address (yet)"
-            )
+            raise Exception(f"{self.full_name} does not have a public IP address (yet)")
         return self.public_ipv4
 
     def get_ssh_private_key_file(self) -> str:
@@ -300,9 +297,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                     self._update_attr("server_networks", name, None)
             # Detach from existing networks if required.
             elif name not in defn.server_networks:
-                self.logger.log(
-                    f"detaching from network ‘{name}’ [{network.id}]"
-                )
+                self.logger.log(f"detaching from network ‘{name}’ [{network.id}]")
                 instance.detach_from_network(network).wait_until_finished()
                 self._update_attr("server_networks", name, None)
 
@@ -332,9 +327,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                         self._update_attr("server_networks", x["network"], x)
                         return True
 
-                self.logger.log(
-                    f"attaching instance to network ‘{name}’ [{nw.id}]..."
-                )
+                self.logger.log(f"attaching instance to network ‘{name}’ [{nw.id}]...")
                 check_wait(attach_to_network)
 
     def _handle_changed_floating_ips(
@@ -360,13 +353,13 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                     self._update_attr("ip_addresses", name, None)
                 else:
                     if name.startswith("nixops-"):
-                        raise Exception (
+                        raise Exception(
                             f"floating IP ‘{name}’ (used by {self.full_name})"
                             " no longer exists; run ‘nixops deploy --check’"
                             " to update resource state"
                         )
                     else:
-                        raise Exception (
+                        raise Exception(
                             f"floating IP ‘{name}’ (used by {self.full_name})"
                             " was manually destroyed"
                         )
@@ -394,9 +387,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                         f"tried to assign floating IP ‘{name}’"
                         " but it doesn't exist..."
                     )
-                self.logger.log(
-                    f"assigning floating IP ‘{name}’ [{fip.id}]..."
-                )
+                self.logger.log(f"assigning floating IP ‘{name}’ [{fip.id}]...")
                 action = fip.assign(self.get_instance())
                 self.wait_on_action(action)
                 self._update_attr("ip_addresses", name, fip.ip)
@@ -421,7 +412,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                     )
                 else:
                     if name.startswith("nixops-"):
-                        raise Exception (
+                        raise Exception(
                             f"volume ‘{name}’ (used by {self.full_name}) no longer exists;"
                             " run ‘nixops deploy --check’ to update resource state"
                         )
@@ -495,9 +486,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                 v["device"] = self.get_udev_name(volume.id)
 
                 def check_device() -> bool:
-                    res = self.run_command(
-                        f"test -e {v['device']}", check=False
-                    )
+                    res = self.run_command(f"test -e {v['device']}", check=False)
                     return res == 0
 
                 if not check_wait(
@@ -714,8 +703,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                     )
                 status = instance.status if instance else "gone"
                 self.logger.log(
-                    f"{self.full_name} went away (state ‘{status}’),"
-                    " will recreate"
+                    f"{self.full_name} went away (state ‘{status}’), will recreate"
                 )
                 self.cleanup_state()
 

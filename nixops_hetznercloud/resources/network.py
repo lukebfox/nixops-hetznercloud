@@ -2,11 +2,7 @@
 
 # Automatic provisioning of Hetzner Cloud Networks.
 
-from hcloud.networks.domain import (
-    Network,
-    NetworkSubnet,
-    NetworkRoute
-)
+from hcloud.networks.domain import Network, NetworkSubnet, NetworkRoute
 from nixops.diff import Handler
 from nixops.resources import ResourceDefinition
 from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
@@ -89,13 +85,6 @@ class NetworkState(HetznerCloudResourceState):
             self._state["routes"] = None
             self._state["labels"] = None
 
-    def _destroy(self) -> None:
-        instance = self.get_instance()
-        if instance is not None:
-            self.logger.log(f"destroying {self.full_name}...")
-            instance.delete()
-        self.cleanup_state()
-
     def realise_create_network(self, allow_recreate: bool) -> None:
         defn: NetworkOptions = self.get_defn().config
         name = self.get_default_name()
@@ -153,7 +142,7 @@ class NetworkState(HetznerCloudResourceState):
 
         # workaround to get hashable types
         # TODO patch nixops StateDict getter for dicts (if appropriate)
-        prev_routes = { RouteOptions(**x) for x in self._state.get("routes", ()) }
+        prev_routes = {RouteOptions(**x) for x in self._state.get("routes", ())}
         final_routes = set(defn.routes)
 
         for route in prev_routes - final_routes:
@@ -179,7 +168,3 @@ class NetworkState(HetznerCloudResourceState):
         # TODO patch nixops to encode tuples (in addition, for backwards compat)
         with self.depl._db:
             self._state["routes"] = list(defn.routes)
-
-    def destroy(self, wipe: bool = False) -> bool:
-        self._destroy()
-        return True

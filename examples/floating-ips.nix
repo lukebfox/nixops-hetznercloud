@@ -27,7 +27,7 @@
   resources.hetznerCloudFloatingIPs.fip3 = {
     inherit apiToken location;
     description = "Rainy day floating IP";
-    type = "ipv4";
+    ipType = "ipv4";
   };
 
 }

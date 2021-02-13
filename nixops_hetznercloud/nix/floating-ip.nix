@@ -14,7 +14,7 @@ with lib;
       description = "Hetzner Cloud Floating IP ``description``.";
     };
 
-    type = mkOption {
+    ipType = mkOption {
       default = "ipv4";
       type = types.enum [ "ipv4" "ipv6" ];
       description = ''
