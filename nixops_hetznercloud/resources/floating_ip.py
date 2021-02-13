@@ -94,13 +94,6 @@ class FloatingIPState(HetznerCloudResourceState):
             self._state["location"] = None
             self._state["type"] = None
 
-    def _destroy(self) -> None:
-        instance = self.get_instance()
-        if instance is not None:
-            self.logger.log(f"destroying {self.full_name}...")
-            instance.delete()
-        self.cleanup_state()
-
     def realise_create_floating_ip(self, allow_recreate: bool) -> None:
         defn: FloatingIPOptions = self.get_defn().config
 
@@ -142,7 +135,3 @@ class FloatingIPState(HetznerCloudResourceState):
         self.get_instance().update(description=defn.description)
         with self.depl._db:
             self._state["description"] = defn.description
-
-    def destroy(self, wipe: bool = False) -> bool:
-        self._destroy()
-        return True

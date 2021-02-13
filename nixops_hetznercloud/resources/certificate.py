@@ -73,13 +73,6 @@ class CertificateState(HetznerCloudResourceState):
             self._state["privateKey"] = None
             self._state["labels"] = None
 
-    def _destroy(self) -> None:
-        instance = self.get_instance()
-        if instance is not None:
-            self.logger.log(f"destroying {self.full_name}...")
-            instance.delete()
-        self.cleanup_state()
-
     def realise_create_certificate(self, allow_recreate: bool) -> None:
         """
         Handle both create and recreate of the certificate resource.
@@ -108,7 +101,3 @@ class CertificateState(HetznerCloudResourceState):
             self._state["privateKey"] = defn.privateKey
 
         self.wait_for_resource_available(self.resource_id)
-
-    def destroy(self, wipe: bool = False) -> bool:
-        self._destroy()
-        return True

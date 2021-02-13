@@ -75,13 +75,6 @@ class SSHKeyState(HetznerCloudResourceState):
             self._state["publicKey"] = ""  # None
             self._state["labels"] = None
 
-    def _destroy(self) -> None:
-        if self.state != self.UP:
-            return
-        self.logger.log(f"destroying {full_name}...")
-        self.get_instance().delete()
-        self.cleanup_state()
-
     def realise_create_ssh_key(self, allow_recreate: bool) -> None:
         """
         Handle both create and recreate of the ssh key resource.
@@ -117,7 +110,3 @@ class SSHKeyState(HetznerCloudResourceState):
             self._state["publicKey"] = defn.publicKey
 
         self.wait_for_resource_available(self.resource_id)
-
-    def destroy(self, wipe: bool = False) -> bool:
-        self._destroy()
-        return True

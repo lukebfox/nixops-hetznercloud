@@ -156,3 +156,14 @@ class HetznerCloudResourceState(DiffEngineResourceState):
             self.cleanup_state()
         elif self.state == self.STARTING:
             self.wait_for_resource_available(self.resource_id)
+
+    def _destroy(self) -> None:
+        instance = self.get_instance()
+        if instance is not None:
+            self.logger.log(f"destroying {self.full_name}...")
+            instance.delete()
+        self.cleanup_state()
+
+    def destroy(self, wipe: bool = False) -> bool:
+        self._destroy()
+        return True
