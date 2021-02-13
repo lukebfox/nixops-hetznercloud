@@ -2,7 +2,8 @@
 
 # Automatic provisioning of Hetzner Cloud Floating IPs.
 
-from hcloud.locations.domain import Location
+from hcloud.floating_ips.domain import CreateFloatingIPResponse, FloatingIP
+from hcloud.locations.domain import BoundLocation
 
 from nixops.diff import Handler
 from nixops.util import attr_property
@@ -111,14 +112,14 @@ class FloatingIPState(HetznerCloudResourceState):
             self._destroy()
             self._client = None
 
-        location: Location = self.get_client().locations.get_by_name(defn.location)
+        location: BoundLocation = self.get_client().locations.get_by_name(defn.location)
 
         self.logger.log(f"creating floating IP at {location.description}...")
-        response = self.get_client().floating_ips.create(
+        response: CreateFloatingIPResponse = self.get_client().floating_ips.create(
             name=self.get_default_name(), type=defn.ipType, home_location=location,
         )
-        if response.action:
-            response.action.wait_until_finished()
+
+        response.action and response.action.wait_until_finished()
 
         self.resource_id = response.floating_ip.id
         self.address = response.floating_ip.ip
@@ -136,8 +137,7 @@ class FloatingIPState(HetznerCloudResourceState):
 
         self.logger.log("updating floating IP description")
         self.get_client().floating_ips.update(
-            floating_ip=FloatingIP(self.resource_id),
-            description=defn.description,
+            floating_ip=FloatingIP(self.resource_id), description=defn.description,
         )
 
         with self.depl._db:

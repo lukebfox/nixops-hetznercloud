@@ -2,11 +2,7 @@
 
 # Automatic provisioning of Hetzner Cloud Networks.
 
-from hcloud.networks.domain import (
-    Network,
-    NetworkSubnet,
-    NetworkRoute
-)
+from hcloud.networks.domain import Network, NetworkSubnet, NetworkRoute
 from nixops.diff import Handler
 from nixops.resources import ResourceDefinition
 from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
@@ -146,7 +142,7 @@ class NetworkState(HetznerCloudResourceState):
 
         # workaround to get hashable types
         # TODO patch nixops StateDict getter for dicts (if appropriate)
-        prev_routes = { RouteOptions(**x) for x in self._state.get("routes", ()) }
+        prev_routes = {RouteOptions(**x) for x in self._state.get("routes", ())}
         final_routes = set(defn.routes)
 
         for route in prev_routes - final_routes:

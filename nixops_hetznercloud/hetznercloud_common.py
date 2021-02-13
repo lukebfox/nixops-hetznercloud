@@ -42,14 +42,14 @@ class HetznerCloudResourceState(DiffEngineResourceState):
         return {"resourceId": self.resource_id}
 
     def get_common_labels(self) -> Dict[str, str]:
-        labels = {
+        labels: Dict[str, str] = {
             "CharonNetworkUUID": self.depl.uuid,
             "CharonInstanceName": self.name,
             "CharonStateFileHost": socket.gethostname(),
             "CharonStateFileUser": getpass.getuser(),
         }
         pattern = "^$|(?i)((?=^[a-z0-9])[a-z0-9._-]{0,63}[a-z0-9]$)"
-        file_name = os.path.basename(self.depl._db.db_file)
+        file_name: str = os.path.basename(self.depl._db.db_file)
         if re.match(pattern, file_name):
             labels["CharonStateFileName"] = file_name
         if self.depl.name:
@@ -115,7 +115,7 @@ class HetznerCloudResourceState(DiffEngineResourceState):
             self._state["labels"] = dict(defn.labels)
 
     def wait_for_resource_available(
-        self, resource_id: str, resource_type: str = None
+        self, resource_id: str, resource_type: Optional[str] = None
     ) -> None:
         if resource_type is None:
             resource_type = self._resource_type

@@ -91,9 +91,13 @@ class CertificateState(HetznerCloudResourceState):
 
         name = self.get_default_name()
         self.logger.log(f"creating certificate '{name}'...")
-        self.resource_id = self.get_client().certificates.create(
-            name=name, certificate=defn.certificate, private_key=defn.privateKey,
-        ).id
+        self.resource_id = (
+            self.get_client()
+            .certificates.create(
+                name=name, certificate=defn.certificate, private_key=defn.privateKey,
+            )
+            .id
+        )
 
         with self.depl._db:
             self.state = self.STARTING

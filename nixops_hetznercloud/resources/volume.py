@@ -3,6 +3,8 @@
 # Automatic provisioning of Hetzner Cloud Volumes.
 
 from hcloud import APIException
+from hcloud.volumes.domain import CreateVolumeResponse
+from hcloud.locations.client import BoundLocation
 from hcloud.actions.domain import ActionFailedException, ActionTimeoutException
 
 from nixops.diff import Handler
@@ -146,18 +148,15 @@ class VolumeState(HetznerCloudResourceState):
             self._destroy()
             self._client = None
 
-        location = self.get_client().locations.get_by_name(defn.location)
-        name = self.get_default_name()
+        location: BoundLocation = self.get_client().locations.get_by_name(defn.location)
+        name: str = self.get_default_name()
 
-        self.logger.log(
-            f"creating {defn.size}GB volume at {location.description}..."
-        )
+        self.logger.log(f"creating {defn.size}GB volume at {location.description}...")
         try:
-            response = self.get_client().volumes.create(
+            response: CreateVolumeResponse = self.get_client().volumes.create(
                 location=location, name=name, size=defn.size, format=defn.fsType,
             )
-            if response.action:
-                response.action.wait_until_finished()
+            response.action and response.action.wait_until_finished()
             self.resource_id = response.volume.id
         except ActionFailedException:
             raise Exception(
@@ -180,7 +179,7 @@ class VolumeState(HetznerCloudResourceState):
 
     def realise_resize_volume(self, allow_recreate: bool) -> None:
         defn: VolumeOptions = self.get_defn().config
-        size = self._state["size"]
+        size: int = self._state["size"]
         if size > defn.size:
             raise Exception("decreasing a volume's size isn't supported.")
         elif size < defn.size:

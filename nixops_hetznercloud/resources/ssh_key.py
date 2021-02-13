@@ -59,7 +59,7 @@ class SSHKeyState(HetznerCloudResourceState):
 
     @property
     def full_name(self) -> str:
-        return f"Hetzner Cloud SSH Key {resource_id}"
+        return f"Hetzner Cloud SSH Key {self.resource_id}"
 
     def prefix_definition(self, attr: Any) -> Dict[Sequence[str], Any]:
         return {("resources", "hetznerCloudSSHKeys"): attr}
