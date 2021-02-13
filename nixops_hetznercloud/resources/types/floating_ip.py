@@ -5,7 +5,7 @@ from typing import Mapping
 class FloatingIPOptions(ResourceOptions):
     apiToken: str
     description: str
-    type: str
+    ipType: str
     location: str
     labels: Mapping[str, str]
     address: str

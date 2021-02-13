@@ -34,6 +34,10 @@ class HetznerCloudResourceState(DiffEngineResourceState):
         self.resource_id = None
         self._client = None
 
+    @property
+    def full_name(self) -> str:
+        raise NotImplementedError
+
     def get_physical_spec(self) -> Dict[str, Any]:
         return {"resourceId": self.resource_id}
 
@@ -57,10 +61,6 @@ class HetznerCloudResourceState(DiffEngineResourceState):
 
     def get_default_name_label(self) -> str:
         return f"{self.depl.description} [{self.name}]"
-
-    @property
-    def full_name(self) -> str:
-        raise NotImplementedError
 
     def get_hetznercloud_resource(
         self, name: str, type_name: str, type: Type[TypedResource]
@@ -115,9 +115,9 @@ class HetznerCloudResourceState(DiffEngineResourceState):
             self._state["labels"] = dict(defn.labels)
 
     def wait_for_resource_available(
-        self, resource_id: str, resource_type: str = ""
+        self, resource_id: str, resource_type: str = None
     ) -> None:
-        if resource_type == "":
+        if resource_type is None:
             resource_type = self._resource_type
         while True:
             res = getattr(self.get_client(), resource_type).get_by_id(resource_id)

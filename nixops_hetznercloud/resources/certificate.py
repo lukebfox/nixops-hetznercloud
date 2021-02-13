@@ -78,6 +78,7 @@ class CertificateState(HetznerCloudResourceState):
         Handle both create and recreate of the certificate resource.
         """
         defn: CertificateOptions = self.get_defn().config
+
         if self.state == self.UP:
             if not allow_recreate:
                 raise Exception(
@@ -89,11 +90,10 @@ class CertificateState(HetznerCloudResourceState):
             self._client = None
 
         name = self.get_default_name()
-        self.logger.log("creating certificate '{name}'...")
-        bound_certificate = self.get_client().certificates.create(
+        self.logger.log(f"creating certificate '{name}'...")
+        self.resource_id = self.get_client().certificates.create(
             name=name, certificate=defn.certificate, private_key=defn.privateKey,
-        )
-        self.resource_id = bound_certificate.id
+        ).id
 
         with self.depl._db:
             self.state = self.STARTING

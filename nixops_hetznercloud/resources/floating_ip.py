@@ -2,6 +2,8 @@
 
 # Automatic provisioning of Hetzner Cloud Floating IPs.
 
+from hcloud.locations.domain import Location
+
 from nixops.diff import Handler
 from nixops.util import attr_property
 from nixops.resources import ResourceDefinition
@@ -92,7 +94,7 @@ class FloatingIPState(HetznerCloudResourceState):
             self._state["description"] = None
             self._state["labels"] = None
             self._state["location"] = None
-            self._state["type"] = None
+            self._state["ipType"] = None
 
     def realise_create_floating_ip(self, allow_recreate: bool) -> None:
         defn: FloatingIPOptions = self.get_defn().config
@@ -109,11 +111,11 @@ class FloatingIPState(HetznerCloudResourceState):
             self._destroy()
             self._client = None
 
-        location = self.get_client().locations.get_by_name(defn.location)
+        location: Location = self.get_client().locations.get_by_name(defn.location)
 
         self.logger.log(f"creating floating IP at {location.description}...")
         response = self.get_client().floating_ips.create(
-            name=self.get_default_name(), type=defn.type, home_location=location,
+            name=self.get_default_name(), type=defn.ipType, home_location=location,
         )
         if response.action:
             response.action.wait_until_finished()
@@ -125,13 +127,18 @@ class FloatingIPState(HetznerCloudResourceState):
         with self.depl._db:
             self.state = self.STARTING
             self._state["location"] = defn.location
-            self._state["type"] = defn.type
+            self._state["ipType"] = defn.ipType
 
         self.wait_for_resource_available(self.resource_id)
 
     def realise_modify_description(self, allow_recreate: bool) -> None:
         defn: FloatingIPOptions = self.get_defn().config
+
         self.logger.log("updating floating IP description")
-        self.get_instance().update(description=defn.description)
+        self.get_client().floating_ips.update(
+            floating_ip=FloatingIP(self.resource_id),
+            description=defn.description,
+        )
+
         with self.depl._db:
             self._state["description"] = defn.description
