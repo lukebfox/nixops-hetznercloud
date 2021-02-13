@@ -3,7 +3,7 @@
 # Automatic provisioning of Hetzner Cloud Floating IPs.
 
 from hcloud.floating_ips.domain import CreateFloatingIPResponse, FloatingIP
-from hcloud.locations.domain import BoundLocation
+from hcloud.locations.client import BoundLocation
 
 from nixops.diff import Handler
 from nixops.util import attr_property

@@ -3,7 +3,7 @@
 # Automatic provisioning of Hetzner Cloud Volumes.
 
 from hcloud import APIException
-from hcloud.volumes.domain import CreateVolumeResponse
+from hcloud.volumes.domain import CreateVolumeResponse, Volume
 from hcloud.locations.client import BoundLocation
 from hcloud.actions.domain import ActionFailedException, ActionTimeoutException
 
@@ -186,9 +186,9 @@ class VolumeState(HetznerCloudResourceState):
             self.logger.log(
                 f"increasing volume size from {size} GiB to {defn.size} GiB"
             )
-
-            self.get_instance().resize(defn.size).wait_until_finished()
-
+            self.get_client().volumes.resize(
+                volume=Volume(self.resource_id), size=defn.size
+            ).wait_until_finished()
             with self.depl._db:
                 self._state["size"] = defn.size
                 self.needsFSResize = True
