@@ -5,7 +5,7 @@
 
 ## Disclaimer
 
-This plugin is in alpha! That means it's a work in progress, and not meant for production. If like me, you're a nix-hobbyist and appreciate the affordable rates Hetzner provides but have been aching for a way to automate deployments then you're in luck! While you can already provision resources with the [Terraform provider](https://github.com/hetznercloud/terraform-provider-hcloud), this will do nothing for automating your NixOS deployment. The alternative, NixOps, offers a more integrated solution which has just been waiting for someone to come and write a plugin. My goal is to automate the entire process of provisioning and deploying your NixOS box with one tool. At the moment I'm working on the remaining resource types with an intent to support all of them.
+This plugin is in alpha! That means it's a work in progress, and not meant for production. If like me, you're a nix-hobbyist and appreciate the affordable rates Hetzner provides but have been aching for a way to automate deployments then you're in luck! While you can already provision resources with the [Terraform provider](https://github.com/hetznercloud/terraform-provider-hcloud), this will do nothing for automating your NixOS deployment. The alternative, NixOps, offers a more integrated solution which has just been waiting for someone to come and write a plugin. My goal is to automate the entire process of provisioning and deploying your NixOS box with one tool.
 
 ## Installing NixOps with plugins
 
@@ -36,7 +36,7 @@ The example code introduces Hetzner Cloud resource management with NixOps.
 To start developing on the NixOps Hetzner Cloud plugin, you can run:
 
 ```bash
-$ nix-shell
+$ nix-shell # or `nix develop` if you have latest nix installed
 $ poetry install
 $ poetry shell
 ```
@@ -44,6 +44,9 @@ $ poetry shell
 ## Testing
 
 From inside the development shell above, execute `pytest`. Remember to set the environmental variable `HCLOUD_API_TOKEN`.
+
+## Updating Dependencies
+There are times when you may want to update this project's dependencies. To get a more recent poetry/poetry2nix, you need to repin the nixpkgs flake input to the latest upstream commit by running `$ nix flake update --update-input nixpkgs`. To use your own local version of NixOps, or modify any python dependencies, edit `pyproject.toml` and run `poetry lock`.
 
 ---
 Credit to the maintainers of the nixops-aws plugin which was a really useful model for nixops plugins and elitak for the original nixos-infect script.

@@ -216,7 +216,8 @@ typing-extensions = "^3.7.4"
 [package.source]
 type = "git"
 url = "https://github.com/NixOS/nixops.git"
-reference = "23db83fc91952d2dbcc64b8aa1ac16f8c8f45bed"
+reference = "master"
+resolved_reference = "23db83fc91952d2dbcc64b8aa1ac16f8c8f45bed"
 
 [[package]]
 name = "packaging"
@@ -457,7 +458,7 @@ optional = false
 python-versions = "*"
 
 [metadata]
-lock-version = "1.0"
+lock-version = "1.1"
 python-versions = "~3.8"
 content-hash = "d913ef3f25f7b0478292ab7b4060fc23f4bb96981bb149624672e5b4646c73ee"
 
