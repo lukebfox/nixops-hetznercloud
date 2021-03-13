@@ -26,6 +26,7 @@ Currently supported resources are as follows:
 | Certificate   | :heavy_check_mark: |
 | SSHKey        | :x: |
 | LoadBalancer  | :x: |
+| Firewall      | :x: |
 
 All NixOps deployment options specific to Hetzner Cloud are declared in the nix files at `nixops_hetznercloud/nix`.
 
