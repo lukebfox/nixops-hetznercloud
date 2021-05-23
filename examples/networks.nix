@@ -23,10 +23,10 @@
         location = "nbg1";
         serverNetworks = [
           { network = resources.hetznerCloudNetworks.network1;
-            privateIP = "10.1.0.2";
+            privateIpAddress = "10.1.0.2";
           }
           { network = resources.hetznerCloudNetworks.network2;
-            privateIP = "10.2.0.2";
+            privateIpAddress = "10.2.0.2";
           }
         ];
       };
@@ -42,7 +42,7 @@
         location = "fsn1";
         serverNetworks = [
           {  network = resources.hetznerCloudNetworks.network1;
-             privateIP = "10.1.0.10";
+             privateIpAddress = "10.1.0.10";
           }
         ];
       };
@@ -58,7 +58,7 @@
         location = "hel1";
         serverNetworks = [
           {  network = resources.hetznerCloudNetworks.network2;
-             privateIP = "10.2.0.10";
+             privateIpAddress = "10.2.0.10";
           }
         ];
       };

@@ -154,7 +154,7 @@ in
       example = literalExample ''
       [{
         network = resources.hetznerCloudNetworks.network1;
-        privateIP = "10.1.0.2";
+        privateIpAddress = "10.1.0.2";
       }]
       '';
       type = with types; listOf (submodule hetznerCloudServerNetworkOptions);
