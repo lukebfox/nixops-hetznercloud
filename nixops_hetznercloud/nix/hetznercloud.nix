@@ -1,7 +1,7 @@
 # Configuration specific to the Hetzner Cloud backend.
 { config, lib, pkgs, name, uuid, resources, ... }:
 
-with import ./lib.nix lib;
+with import ./lib.nix { inherit lib; };
 with lib;
 
 let
@@ -106,10 +106,10 @@ in
     deployment.hetznerCloud.location = mkOption {
       default = null;
       example = "nbg1";
-      type = with types; nullOr (enum ["nbg1" "fsn1" "hel1"]);
+      type = with types; nullOr (enum ["nbg1" "fsn1" "hel1" "ash"]);
       description = ''
         The ID of the location to create the server in.
-        Options are ``nbg1``, ``fsn1``, or ``hel1``.
+        Options are ``nbg1``, ``fsn1``, ``hel1`` or ``ash``.
       '';
     };
 

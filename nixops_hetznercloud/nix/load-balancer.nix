@@ -1,7 +1,7 @@
 # Configuration specific to Hetzner Cloud Load Balancer Resource.
 { config, lib, uuid, name, resources, ... }:
 
-with import ./lib.nix lib;
+with import ./lib.nix { inherit lib; };
 with lib;
 
 let
@@ -174,18 +174,16 @@ let
       };
     };
 
-in
-
-{
+in {
 
   options = {
 
     location = mkOption {
       example = "nbg1";
-      type = type.enum ["nbg1" "fsn1" "hel1"];
+      type = types.enum ["nbg1" "fsn1" "hel1" "ash"];
       description = ''
         The Hetzner Cloud location where the load balancer should be created.
-        Options are 'nbg1', 'fsn1', or 'hel1'.
+        Options are ``nbg1``, ``fsn1``, ``hel1`` or ``ash``.
       '';
     };
 

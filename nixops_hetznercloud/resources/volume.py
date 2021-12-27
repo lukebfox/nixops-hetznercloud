@@ -154,7 +154,10 @@ class VolumeState(HetznerCloudResourceState):
         self.logger.log(f"creating {defn.size}GB volume at {location.description}...")
         try:
             response: CreateVolumeResponse = self.get_client().volumes.create(
-                location=location, name=name, size=defn.size, format=defn.fsType,
+                location=location,
+                name=name,
+                size=defn.size,
+                format=defn.fsType,
             )
             response.action and response.action.wait_until_finished()
             self.resource_id = response.volume.id

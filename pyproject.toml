@@ -1,22 +1,23 @@
 [tool.poetry]
 name = "nixops_hetznercloud"
-version = "0.1.0"
+version = "0.2.0"
 description = "NixOps Hetzner Cloud plugin"
 authors = ["lukebfox <mail@lukebentleyfox.net>"]
 license = "LGPL-3.0-only"
 include = [ "nixops_hetznercloud/nix/*.nix" ]
 
 [tool.poetry.dependencies]
-python = "~3.8"
-hcloud = "1.8.1"
+python = "~3.9"
+hcloud = "1.16.0"
 typing-extensions = "^3.7.4"
-nixops = {git = "https://github.com/NixOS/nixops.git", rev = "master"}
+#nixops = {git = "https://github.com/NixOS/nixops.git", rev = "master"}
+nixops = {git = "https://github.com/lukebfox/nixops.git", rev = "migrate-nose-pytest"}
 
 [tool.poetry.dev-dependencies]
-mypy = "^0.770"
-black = "^19.10b0"
+mypy = "^0.910"
+black = "^21.10b0"
 flake8 = "^3.8.2"
-pytest = "^5.4.3"
+pytest = "^6"
 pytest-xdist="1.34.0"
 pytest-cov = "^2.10.0"
 
@@ -26,3 +27,28 @@ hetznercloud = "nixops_hetznercloud.plugin"
 [build-system]
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"
+
+
+[tool.pytest.ini_options]
+addopts = """
+  --cov=nixops_hetznercloud
+  --cov-report html:html
+  --cov-report xml:coverage.xml
+  --cov-report term
+  --numprocesses=auto
+"""
+testpaths = [ "tests" ]
+python_files = "*.py"
+
+[tool.mypy]
+python_version = 3.9
+check_untyped_defs = true
+#disallow_untyped_defs = true
+ignore_missing_imports = true
+no_implicit_optional = true
+strict_optional = true
+warn_return_any = true
+warn_unused_configs = true
+
+["tool.mypy-pytest.*"]
+ignore_missing_imports = true
