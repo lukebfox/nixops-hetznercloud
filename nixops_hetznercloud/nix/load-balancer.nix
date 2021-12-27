@@ -180,10 +180,10 @@ in {
 
     location = mkOption {
       example = "nbg1";
-      type = type.enum ["nbg1" "fsn1" "hel1"];
+      type = types.enum ["nbg1" "fsn1" "hel1" "ash"];
       description = ''
         The Hetzner Cloud location where the load balancer should be created.
-        Options are 'nbg1', 'fsn1', or 'hel1'.
+        Options are ``nbg1``, ``fsn1``, ``hel1`` or ``ash``.
       '';
     };
 

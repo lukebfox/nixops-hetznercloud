@@ -14,10 +14,10 @@ in {
     
     location = mkOption {
       example = "nbg1";
-      type = types.enum ["nbg1" "fsn1" "hel1"];
+      type = types.enum ["nbg1" "fsn1" "hel1" "ash"];
       description = ''
         The ID of the location to create the volume in.
-        Choices are ``nbg1``, ``fsn1``, or ``hel1``.
+        Choices are ``nbg1``, ``fsn1``,``hel1`` or ``ash``.
       '';
     };
     

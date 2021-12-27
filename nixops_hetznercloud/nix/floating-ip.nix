@@ -25,10 +25,10 @@ with lib;
     location = mkOption {
       default = null;
       example = "nbg1";
-      type = with types; nullOr (enum ["nbg1" "fsn1" "hel1"]);
+      type = with types; nullOr (enum ["nbg1" "fsn1" "hel1" "ash"]);
       description = ''
         The ID of the home location (routing is optimized for that location).
-        Choices are ``nbg1``, ``fsn1`` or ``hel1``.
+        Choices are ``nbg1``, ``fsn1``, ``hel1`` or ``ash``.
       '';
     };
 
