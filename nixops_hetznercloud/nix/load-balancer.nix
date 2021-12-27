@@ -1,7 +1,7 @@
 # Configuration specific to Hetzner Cloud Load Balancer Resource.
 { config, lib, uuid, name, resources, ... }:
 
-with import ./lib.nix lib;
+with import ./lib.nix { inherit lib; };
 with lib;
 
 let
@@ -174,9 +174,7 @@ let
       };
     };
 
-in
-
-{
+in {
 
   options = {
 
