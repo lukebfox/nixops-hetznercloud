@@ -1,12 +1,12 @@
 # Configuration specific to Hetzner Cloud Volume Resource.
 { config, lib, name, uuid, resources, ... }:
 
-with import ./lib.nix lib;
+with import ./lib.nix { inherit lib; };
 with lib;
+
 let
   cfg = config;
-in
-{
+in {
 
   imports = [ ./common-volume-options.nix ];
 

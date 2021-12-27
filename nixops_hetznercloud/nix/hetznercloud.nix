@@ -1,7 +1,7 @@
 # Configuration specific to the Hetzner Cloud backend.
 { config, lib, pkgs, name, uuid, resources, ... }:
 
-with import ./lib.nix lib;
+with import ./lib.nix { inherit lib; };
 with lib;
 
 let

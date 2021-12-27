@@ -1,7 +1,7 @@
 # Configuration specific to Hetzner Cloud Floating IP Resource.
 { config, lib, name, uuid, ... }:
 
-with import ./lib.nix lib;
+with import ./lib.nix { inherit lib; };
 with lib;
 
 {
