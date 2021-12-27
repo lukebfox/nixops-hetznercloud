@@ -46,7 +46,8 @@ class SSHKeyState(HetznerCloudResourceState):
     def __init__(self, depl, name, id):
         super(HetznerCloudResourceState, self).__init__(depl, name, id)
         self.handle_create_ssh_key = Handler(
-            ["publicKey"], handle=self.realise_create_ssh_key,
+            ["publicKey"],
+            handle=self.realise_create_ssh_key,
         )
         self.handle_modify_labels = Handler(
             ["labels"],

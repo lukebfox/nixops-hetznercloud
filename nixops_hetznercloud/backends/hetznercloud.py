@@ -25,10 +25,9 @@ from nixops import known_hosts
 from nixops.backends import MachineDefinition, MachineState
 from nixops.deployment import Deployment
 from nixops.nix_expr import RawValue
-from nixops.resources import ResourceEval
+from nixops.resources import ResourceEval, ResourceDefinition
 from nixops.util import attr_property, create_key_pair, check_wait
 
-from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
 from nixops_hetznercloud.resources.floating_ip import FloatingIPState
 from nixops_hetznercloud.resources.network import NetworkState
 from nixops_hetznercloud.resources.volume import VolumeState
@@ -105,7 +104,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         self._client = None
 
     def cleanup_state(self) -> None:
-        """ Discard all state pertaining to an instance. """
+        """Discard all state pertaining to an instance."""
         with self.depl._db:
             self.vm_id = None
             self.public_ipv4 = None
@@ -176,9 +175,11 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         return labels
 
     def get_ssh_name(self) -> str:
-        if not self.public_ipv4:
+        ssh_name: Optional[str] = self.public_ipv4
+        if ssh_name is None:
             raise Exception(f"{self.full_name} does not have a public IP address (yet)")
-        return self.public_ipv4
+        else:
+            return ssh_name
 
     def get_ssh_private_key_file(self) -> str:
         return self._ssh_private_key_file or self.write_ssh_private_key(
@@ -560,7 +561,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                 v["device"] = self.get_udev_name(volume.id)
                 self._update_attr("volumes", name, v)
 
-    def after_activation(self, defn: HetznerCloudDefinition) -> None:
+    def after_activation(self, defn: ResourceDefinition) -> None:
 
         # Unlike ext4, xfs filesystems must be resized while the underlying drive is mounted.
         # Thus this operation is delayed until after activation.
@@ -586,9 +587,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                     with res.depl._db:
                         res.needsFSResize = False
 
-    def create_after(
-        self, resources, defn: HetznerCloudDefinition
-    ) -> Set[HetznerCloudResourceState]:
+    def create_after(self, resources, defn: Optional[ResourceDefinition]):
         return {
             r
             for r in resources
@@ -608,7 +607,8 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             elif key.name == name:
                 self.get_client().ssh_keys.delete(key)
         ssh_key: BoundSSHKey = self.get_client().ssh_keys.create(
-            name=name, public_key=public_key,
+            name=name,
+            public_key=public_key,
         )
         return ssh_key
 
@@ -837,7 +837,8 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             res.exists = False
 
     def _check_status(self, status) -> bool:
-        return status == self.get_instance().status
+        isCorrect: bool = status == self.get_instance().status
+        return isCorrect
 
     def wait_on_action(self, action: BoundAction) -> None:
         while action.status == "running":

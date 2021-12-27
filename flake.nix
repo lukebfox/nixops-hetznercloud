@@ -1,15 +1,14 @@
 {
   description = "NixOps Hetzner Cloud Plugin: a plugin for NixOps deployments to the Hetzner Cloud provider";
 
-  inputs.nixpkgs.url    = "github:NixOS/nixpkgs/master";
-  inputs.utils.url      = "github:numtide/flake-utils";
-
+  inputs.nixpkgs.url  = "github:NixOS/nixpkgs/master";
+  inputs.utils.url    = "github:numtide/flake-utils";
   inputs.flake-compat = {
     url = "github:edolstra/flake-compat";
     flake = false;
   };
 
-  outputs = { self, nixpkgs, utils, ...}: utils.lib.eachDefaultSystem (system: let
+  outputs = { self, nixpkgs, utils, ... }: utils.lib.eachDefaultSystem (system: let
 
     pkgs = import nixpkgs { inherit system; };
 
@@ -24,11 +23,12 @@
 
     devShell = pkgs.mkShell {
       buildInputs = [
+        pkgs.nixpkgs-fmt
+        pkgs.poetry
         (pkgs.poetry2nix.mkPoetryEnv {
           inherit overrides;
           projectDir = ./.;
         })
-        pkgs.poetry
       ];
     };
   });
