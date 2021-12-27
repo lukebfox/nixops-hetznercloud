@@ -86,11 +86,11 @@ let
         };
       };
     };
-      
+
   loadBalancerServiceOptions =
     { config, ... }:
     {
-      options = {   
+      options = {
         protocol = mkOption {
           default = "http";
           type = types.enum [ "tcp" "http" "https" ];
@@ -109,7 +109,7 @@ let
           type = types.int;
           description = ''
             The port traffic is forwarded to, i.e. the port the targets are
-            listening and accepting connections on. For HTTP or HTTPS services, 
+            listening and accepting connections on. For HTTP or HTTPS services,
             the default values are 80 or 443, respectively.
           '';
         };
@@ -174,9 +174,58 @@ let
       };
     };
 
+  loadBalancerTargetOptions =
+    { config, nodes, resources, ... }:
+    {
+      options = {
+        machine = mkOption {
+          type = machine;
+          example = literalExample "nodes.httpserver1";
+          apply = x: x.hetznerCloud.serverName;
+          description = ''
+            The machine resource to use as a target for this Load Balancer.
+          '';
+        };
+        usePrivateIp = mkEnableOption ''
+          Whether to route to the private IP of the target resource.
+        '';
+      };
+      config =
+        mkAssert
+          (true) # TODO
+          "Target must be in the same network as the load balancer if
+          usePrivateIP is enabled."
+          {};
+    };
+
 in {
 
   options = {
+
+    algorithm = mkOption {
+      default = "round_robin";
+      type = types.enum ["round_robin" "least_connections"];
+      description = "Algorithm used to direct incoming requests.";
+    };
+
+    enablePublicInterface = mkOption {
+      default = true;
+      type = types.bool;
+      description = ''
+        Whether to enable the public facing network interface for this load
+        balancer.
+      '';
+    };
+
+    loadBalancerType = mkOption {
+      default = "lb11";
+      example = "lb11";
+      type = types.str;
+      description = ''
+        Hetner Cloud load balancer type.
+        See TODO for a list of valid load balancer types.
+      '';
+    };
 
     location = mkOption {
       example = "nbg1";
@@ -187,32 +236,14 @@ in {
       '';
     };
 
-    balancerType = mkOption {
-      default = "lb11";
-      example = "lb11";
-      type = types.str;
-      description = ''
-        Hetner Cloud load balancer type.
-        See TODO for a list of valid load balancer types.
-      '';
-    };
-
     network = mkOption {
       default = null;
-      example = "resources.hetznerCloudNetwork.myPrivateNet";
+      example = literalExample "resources.hetznerCloudNetworks.privNet";
       type = types.nullOr (resource "hetznercloud-network");
+      apply = x: if x == null then null else "nixops-${uuid}-${x._name}";
       description = ''
         The Network Resource to attach this Load Balancer to.
         Targets must be a part of the same network as the Load Balancer.
-      '';
-    };
-
-    targets = mkOption {
-      default = [];
-      example = [ "machines.httpserver1" "machines.httpserver2" ];
-      type = types.listOf machine;
-      description = ''
-        The list of machine resources to use as targets for this Load Balancer.
       '';
     };
 
@@ -225,23 +256,26 @@ in {
       '';
     };
 
-    algorithm = mkOption {
-      default = "round_robin";
-      example = "least_connections";
-      type = types.str;
-      description = "Algorithm used to direct incoming requests.";
-    };
-
-    loadBalancerId = mkOption {
-      default = "";
-      type = types.str;
-      description = ''
-        The Load Balancer ID generated from Hetzner Cloud. This is set by NixOps
+    targets = mkOption {
+      default = [];
+      example = literalExample ''
+      [{
+        machine = nodes.httpserver1;
+        usePrivateIp = true;
+      }]
       '';
+      type = with types; listOf (submodule loadBalancerTargetOptions);
     };
 
   } // import ./common-hetznercloud-options.nix { inherit lib; };
 
-  config._type = "hetznercloud-load-balancer";
+  config =
+    mkAssert
+      ( (config.enablePublicInterface || config.network != null) )
+      ''
+        Disabling the public interface is not supported when the load balancer
+        is not attached to a private network.
+      ''
+      { _type = "hetznercloud-load-balancer"; };
 
 }
