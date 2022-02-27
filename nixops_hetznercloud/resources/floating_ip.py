@@ -52,7 +52,7 @@ class FloatingIPState(HetznerCloudResourceState):
     def __init__(self, depl, name, id):
         super(HetznerCloudResourceState, self).__init__(depl, name, id)
         self.handle_create_floating_ip = Handler(
-            ["location", "type"], handle=self.realise_create_floating_ip,
+            ["location", "ipType"], handle=self.realise_create_floating_ip,
         )
         self.handle_modify_description = Handler(
             ["description"],
