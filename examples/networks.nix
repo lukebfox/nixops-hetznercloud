@@ -4,12 +4,14 @@
 
   resources.hetznerCloudNetworks.network1 = {
     inherit apiToken;
+    zone = "eu-central";
     ipRange = "10.1.0.0/16";
     subnets = ["10.1.0.0/24"];
   };
 
   resources.hetznerCloudNetworks.network2 = {
     inherit apiToken;
+    zone = "eu-central";
     ipRange = "10.2.0.0/16";
     subnets = [ "10.2.0.0/24" ];
   };

@@ -17,6 +17,14 @@ with lib;
       '';
     };
 
+    zone = mkOption {
+      default = "eu-central";
+      type = types.enum  ["eu-central" "us-east"];
+      description = ''
+        The name of the network zone (region). All hosts in this network must be from this zone.
+      '';
+    };
+
     subnets = mkOption {
       default = [];
       example = ["10.0.1.0/24" "10.0.2.0/24" "10.0.3.0/24"];

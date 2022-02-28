@@ -9,6 +9,7 @@ class RouteOptions(ResourceOptions):
 
 class NetworkOptions(ResourceOptions):
     apiToken: str
+    zone: str
     ipRange: str
     subnets: Sequence[str]
     routes: Sequence[RouteOptions]

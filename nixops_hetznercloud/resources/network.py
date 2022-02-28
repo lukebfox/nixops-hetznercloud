@@ -45,7 +45,7 @@ class NetworkState(HetznerCloudResourceState):
     def __init__(self, depl, name, id):
         super(HetznerCloudResourceState, self).__init__(depl, name, id)
         self.handle_create_network = Handler(
-            ["ipRange"], handle=self.realise_create_network,
+            ["ipRange", "zone"], handle=self.realise_create_network,
         )
         self.handle_modify_subnets = Handler(
             ["subnets"],
@@ -81,6 +81,7 @@ class NetworkState(HetznerCloudResourceState):
             self.state = self.MISSING
             self.resource_id = None
             self._state["ipRange"] = None
+            self._state["zone"] = None
             self._state["subnets"] = None
             self._state["routes"] = None
             self._state["labels"] = None
@@ -107,6 +108,7 @@ class NetworkState(HetznerCloudResourceState):
         with self.depl._db:
             self.state = self.STARTING
             self._state["ipRange"] = defn.ipRange
+            self._state["zone"] = defn.zone
 
         self.wait_for_resource_available(self.resource_id)
 
@@ -121,7 +123,7 @@ class NetworkState(HetznerCloudResourceState):
             self.wait_on_action(
                 self.get_client().networks.delete_subnet(
                     network=Network(self.resource_id),
-                    subnet=NetworkSubnet(ip_range, "cloud", "eu-central"),
+                    subnet=NetworkSubnet(ip_range, "cloud", defn.zone),
                 )
             )
 
@@ -130,7 +132,7 @@ class NetworkState(HetznerCloudResourceState):
             self.wait_on_action(
                 self.get_client().networks.add_subnet(
                     network=Network(self.resource_id),
-                    subnet=NetworkSubnet(ip_range, "cloud", "eu-central"),
+                    subnet=NetworkSubnet(ip_range, "cloud", defn.zone),
                 )
             )
 
