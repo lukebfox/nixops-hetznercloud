@@ -28,7 +28,7 @@
           inherit overrides;
           projectDir = ./.;
         })
-        pkgs.poetry
+        pkgs.python3Packages.poetry
       ];
     };
   });
