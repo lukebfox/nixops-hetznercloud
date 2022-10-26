@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nixops_hetznercloud"
-version = "0.1.1"
+version = "0.2.0"
 description = "NixOps Hetzner Cloud plugin"
 authors = ["lukebfox <mail@lukebentleyfox.net>"]
 license = "LGPL-3.0-only"
