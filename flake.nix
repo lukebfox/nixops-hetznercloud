@@ -17,19 +17,23 @@
 
   in {
 
-    defaultPackage = pkgs.poetry2nix.mkPoetryApplication {
-      inherit overrides;
-      projectDir = ./.;
+    packages = rec {
+      default = pkgs.poetry2nix.mkPoetryApplication {
+        inherit overrides;
+        projectDir = ./.;
+      };
     };
 
-    devShell = pkgs.mkShell {
-      buildInputs = [
-        (pkgs.poetry2nix.mkPoetryEnv {
-          inherit overrides;
-          projectDir = ./.;
-        })
-        pkgs.python3Packages.poetry
-      ];
+    devShells = {
+      default = pkgs.mkShell {
+        buildInputs = [
+          (pkgs.poetry2nix.mkPoetryEnv {
+            inherit overrides;
+            projectDir = ./.;
+          })
+          pkgs.python3Packages.poetry
+        ];
+      };
     };
   });
 }
