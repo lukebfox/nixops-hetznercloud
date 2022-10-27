@@ -221,9 +221,8 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             # Hetzner Cloud networking defaults
             ("networking", "defaultGateway"): "172.31.1.1",
             ("networking", "nameservers"): [
-                "213.133.98.98",
-                "213.133.99.99",
-                "213.133.100.100",
+                "185.12.64.1",
+                "185.12.64.2",
             ],
             (
                 "networking",
