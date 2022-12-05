@@ -106,10 +106,10 @@ in
     deployment.hetznerCloud.location = mkOption {
       default = null;
       example = "nbg1";
-      type = with types; nullOr (enum ["nbg1" "fsn1" "hel1" "ash"]);
+      type = with types; nullOr (enum ["nbg1" "fsn1" "hel1" "ash" "hil"]);
       description = ''
         The ID of the location to create the server in.
-        Options are ``nbg1``, ``fsn1``, ``hel1`` or ``ash``.
+        Options are ``nbg1``, ``fsn1``, ``hel1``, ``ash`` or ``hil``.
       '';
     };
 
