@@ -45,7 +45,7 @@ To start developing on the NixOps Hetzner Cloud plugin, you can run:
 
 ## Testing
 
-From inside the development shell above, execute `pytest`. Remember to set the environmental variable `HCLOUD_API_TOKEN`.
+From inside the development shell above, execute `pytest`. Remember to set the environmental variable `HCLOUD_API_TOKEN` to the token for the hetzner cloud project you're using asfor testing.
 
 ## Updating Dependencies
 There are times when you may want to update this project's dependencies.
