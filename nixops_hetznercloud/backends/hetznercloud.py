@@ -25,10 +25,9 @@ from nixops import known_hosts
 from nixops.backends import MachineDefinition, MachineState
 from nixops.deployment import Deployment
 from nixops.nix_expr import RawValue
-from nixops.resources import ResourceEval
+from nixops.resources import ResourceEval, ResourceState, ResourceDefinition
 from nixops.util import attr_property, create_key_pair, check_wait
 
-from nixops_hetznercloud.hetznercloud_common import HetznerCloudResourceState
 from nixops_hetznercloud.resources.floating_ip import FloatingIPState
 from nixops_hetznercloud.resources.network import NetworkState
 from nixops_hetznercloud.resources.volume import VolumeState
@@ -105,7 +104,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
         self._client = None
 
     def cleanup_state(self) -> None:
-        """ Discard all state pertaining to an instance. """
+        """Discard all state pertaining to an instance."""
         with self.depl._db:
             self.vm_id = None
             self.public_ipv4 = None
@@ -559,7 +558,7 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                 v["device"] = self.get_udev_name(volume.id)
                 self._update_attr("volumes", name, v)
 
-    def after_activation(self, defn: HetznerCloudDefinition) -> None:
+    def after_activation(self, defn: ResourceDefinition) -> None:
 
         # Unlike ext4, xfs filesystems must be resized while the underlying drive is mounted.
         # Thus this operation is delayed until after activation.
@@ -586,8 +585,8 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
                         res.needsFSResize = False
 
     def create_after(
-        self, resources, defn: HetznerCloudDefinition
-    ) -> Set[HetznerCloudResourceState]:
+        self, resources, defn: Optional[ResourceDefinition]
+    ) -> Set[ResourceState[ResourceDefinition]]:
         return {
             r
             for r in resources
@@ -607,7 +606,8 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             elif key.name == name:
                 self.get_client().ssh_keys.delete(key)
         ssh_key: BoundSSHKey = self.get_client().ssh_keys.create(
-            name=name, public_key=public_key,
+            name=name,
+            public_key=public_key,
         )
         return ssh_key
 

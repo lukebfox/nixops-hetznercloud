@@ -52,7 +52,8 @@ class FloatingIPState(HetznerCloudResourceState):
     def __init__(self, depl, name, id):
         super(HetznerCloudResourceState, self).__init__(depl, name, id)
         self.handle_create_floating_ip = Handler(
-            ["location", "ipType"], handle=self.realise_create_floating_ip,
+            ["location", "ipType"],
+            handle=self.realise_create_floating_ip,
         )
         self.handle_modify_description = Handler(
             ["description"],
@@ -116,7 +117,9 @@ class FloatingIPState(HetznerCloudResourceState):
 
         self.logger.log(f"creating floating IP at {location.description}...")
         response: CreateFloatingIPResponse = self.get_client().floating_ips.create(
-            name=self.get_default_name(), type=defn.ipType, home_location=location,
+            name=self.get_default_name(),
+            type=defn.ipType,
+            home_location=location,
         )
 
         response.action and response.action.wait_until_finished()
@@ -137,7 +140,8 @@ class FloatingIPState(HetznerCloudResourceState):
 
         self.logger.log("updating floating IP description")
         self.get_client().floating_ips.update(
-            floating_ip=FloatingIP(self.resource_id), description=defn.description,
+            floating_ip=FloatingIP(self.resource_id),
+            description=defn.description,
         )
 
         with self.depl._db:
