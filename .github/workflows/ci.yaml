@@ -7,25 +7,37 @@ on:
 
 env:
   CACHIX_ID: nixops-hetznercloud
-  FLAKES_URL: https://github.com/numtide/nix-flakes-installer/releases/download/nix-3.0pre20200820_4d77513/install
-  FLAKES_CONF: experimental-features = nix-command flakes
 
 jobs:
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Install Nix
+      uses: cachix/install-nix-action@v18
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+    - name: Cachix
+      uses: cachix/cachix-action@v12
+      with:
+        name:        ${{ env.CACHIX_ID }}
+        signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
+    - run: "echo OK"
+    - run: nix --version    
 
   parsing:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v3
       with:
           fetch-depth: 0 # Nix Flakes doesn't work on shallow clones
     - name: Install Nix
-      uses: cachix/install-nix-action@v12
-      with:
-        install_url:      ${{env.FLAKES_URL}}
-        extra_nix_config: ${{env.FLAKES_CONF}}
+      uses: cachix/install-nix-action@v18
     - name: Cachix
-      uses: cachix/cachix-action@v8
+      uses: cachix/cachix-action@v12
       with:
         name:        ${{env.CACHIX_ID}}
         signingKey: '${{secrets.CACHIX_SIGNING_KEY}}'
@@ -39,36 +51,30 @@ jobs:
     needs: parsing
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v3
       with:
         fetch-depth: 0
     - name: Install Nix
-      uses: cachix/install-nix-action@v12
-      with:
-        install_url:      ${{env.FLAKES_URL}}
-        extra_nix_config: ${{env.FLAKES_CONF}}
+      uses: cachix/install-nix-action@v18
     - name: Cachix
-      uses: cachix/cachix-action@v8
+      uses: cachix/cachix-action@v12
       with:
         name:        ${{env.CACHIX_ID}}
         signingKey: '${{secrets.CACHIX_SIGNING_KEY}}'
     - run: nix build
 
-  black:
+  check:
     runs-on: ubuntu-latest
     needs: build
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v3
       with:
         fetch-depth: 0
     - name: Install Nix
-      uses: cachix/install-nix-action@v12
-      with:
-        install_url:      ${{env.FLAKES_URL}}
-        extra_nix_config: ${{env.FLAKES_CONF}}
+      uses: cachix/install-nix-action@v18
     - name: Cachix
-      uses: cachix/cachix-action@v8
+      uses: cachix/cachix-action@v12
       with:
         name:        ${{env.CACHIX_ID}}
         signingKey: '${{secrets.CACHIX_SIGNING_KEY}}'
@@ -82,16 +88,13 @@ jobs:
     needs: build
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v3
       with:
         fetch-depth: 0
     - name: Nix
-      uses: cachix/install-nix-action@v12
-      with:
-        install_url:      ${{env.FLAKES_URL}}
-        extra_nix_config: ${{env.FLAKES_CONF}}
+      uses: cachix/install-nix-action@v18
     - name: Cachix
-      uses: cachix/cachix-action@v8
+      uses: cachix/cachix-action@v12
       with:
         name:        ${{env.CACHIX_ID}}
         signingKey: '${{secrets.CACHIX_SIGNING_KEY}}'
@@ -105,16 +108,13 @@ jobs:
     needs: build
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v3
       with:
         fetch-depth: 0
     - name: Install Nix
-      uses: cachix/install-nix-action@v12
-      with:
-        install_url:      ${{env.FLAKES_URL}}
-        extra_nix_config: ${{env.FLAKES_CONF}}
+      uses: cachix/install-nix-action@v18
     - name: Cachix
-      uses: cachix/cachix-action@v8
+      uses: cachix/cachix-action@v12
       with:
         name:        ${{env.CACHIX_ID}}
         signingKey: '${{secrets.CACHIX_SIGNING_KEY}}'
