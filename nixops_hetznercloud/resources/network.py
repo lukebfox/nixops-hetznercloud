@@ -45,7 +45,8 @@ class NetworkState(HetznerCloudResourceState):
     def __init__(self, depl, name, id):
         super(HetznerCloudResourceState, self).__init__(depl, name, id)
         self.handle_create_network = Handler(
-            ["ipRange", "zone"], handle=self.realise_create_network,
+            ["ipRange", "zone"],
+            handle=self.realise_create_network,
         )
         self.handle_modify_subnets = Handler(
             ["subnets"],

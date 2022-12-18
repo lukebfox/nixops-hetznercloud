@@ -44,7 +44,8 @@ class CertificateState(HetznerCloudResourceState):
     def __init__(self, depl, name, id):
         super(HetznerCloudResourceState, self).__init__(depl, name, id)
         self.handle_create_certificate = Handler(
-            ["certificate", "privateKey"], handle=self.realise_create_certificate,
+            ["certificate", "privateKey"],
+            handle=self.realise_create_certificate,
         )
         self.handle_modify_labels = Handler(
             ["labels"],
@@ -94,7 +95,9 @@ class CertificateState(HetznerCloudResourceState):
         self.resource_id = (
             self.get_client()
             .certificates.create(
-                name=name, certificate=defn.certificate, private_key=defn.privateKey,
+                name=name,
+                certificate=defn.certificate,
+                private_key=defn.privateKey,
             )
             .id
         )
