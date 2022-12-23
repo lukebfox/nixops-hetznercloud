@@ -7,7 +7,7 @@ This repo contains a NixOps Plugin enabling [Hetzner Cloud][3] deployments. Whil
 
 ## Installing NixOps with plugins
 
-There is no official method for this yet, however it is not difficult anymore with [nixops-plugged][5]. Here is a [solid example][6] from my own configs.
+Simply use `nixopsUnstable` from nixpkgs to get a handle on a nixops bundled with all the plugins including this one. Here is an [example][5] from my own configs.
 
 ## Usage
 
@@ -59,6 +59,4 @@ Credit to the maintainers of the nixops-aws plugin which was a really useful mod
 [2]: https://nixos.org/
 [3]: https://www.hetzner.com/cloud
 [4]: https://github.com/hetznercloud/terraform-provider-hcloud
-[5]: http://github.com/lukebfox/nixops-plugged
-[6]: https://github.com/lukebfox/nix-configs/blob/master/flake.nix
-[7]: https://github.com/typetetris/nixops-with-plugins
+[5]: https://github.com/lukebfox/nix-configs/blob/master/flake.nix
