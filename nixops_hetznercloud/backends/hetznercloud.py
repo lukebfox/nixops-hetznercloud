@@ -222,7 +222,13 @@ class HetznerCloudState(MachineState[HetznerCloudDefinition]):
             ("networking", "nameservers"): [
                 "185.12.64.1",
                 "185.12.64.2",
+                "2a01:4ff:ff00::add:1",
+                "2a01:4ff:ff00::add:2",
             ],
+            ("networking", "defaultGateway6"): {
+                "address": "fe80::1",
+                "interface": "ens3",
+            },
             (
                 "networking",
                 "interfaces",
