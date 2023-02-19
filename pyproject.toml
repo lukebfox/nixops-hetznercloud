@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nixops_hetznercloud"
-version = "0.1.2"
+version = "0.1.3"
 description = "NixOps Hetzner Cloud plugin"
 authors = ["lukebfox <mail@lukebentleyfox.net>"]
 license = "LGPL-3.0-only"
@@ -8,7 +8,7 @@ include = [ "nixops_hetznercloud/nix/*.nix" ]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-hcloud = "1.18.0"
+hcloud = "1.18.2"
 typing-extensions = "^3.7.4"
 nixops = {git = "https://github.com/NixOS/nixops.git", rev = "master"}
 

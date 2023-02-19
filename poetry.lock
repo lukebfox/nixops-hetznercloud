@@ -217,30 +217,18 @@ pycodestyle = ">=2.9.0,<2.10.0"
 pyflakes = ">=2.5.0,<2.6.0"
 
 [[package]]
-name = "future"
-version = "0.18.2"
-description = "Clean single-source support for Python 3 and 2"
-category = "main"
-optional = false
-python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
-files = [
-    {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
-]
-
-[[package]]
 name = "hcloud"
-version = "1.18.0"
+version = "1.18.2"
 description = "Official Hetzner Cloud python library"
 category = "main"
 optional = false
 python-versions = ">3.5"
 files = [
-    {file = "hcloud-1.18.0-py2.py3-none-any.whl", hash = "sha256:4a999b46a9e427df499bba3c70a7ab8da1bd3a95dc8495f7512ac69f8bf8424c"},
-    {file = "hcloud-1.18.0.tar.gz", hash = "sha256:a21d940cde8f0c1fd10a0581b0618eb840a6f592404faafdb6070101f4525ff6"},
+    {file = "hcloud-1.18.2-py2.py3-none-any.whl", hash = "sha256:fcd73c7aab1d6e729333697e5214b26727775eccdbfb50effd1863c3424caa59"},
+    {file = "hcloud-1.18.2.tar.gz", hash = "sha256:37bd5ba56387e3c491c5babd3e08ab91d5f0390cd5e880e4dfea19e21681bc9e"},
 ]
 
 [package.dependencies]
-future = ">=0.17.1"
 python-dateutil = ">=2.7.5"
 requests = ">=2.20"
 
@@ -670,4 +658,4 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "c65614d419d1a79d4c8b07b590f5d313e1ca66cdcf0cd716cba8333af817a1e5"
+content-hash = "8e050b06d34ea6937116824a62353ba4900b46d4f566b38a07d87d7885840fc4"
